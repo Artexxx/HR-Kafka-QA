@@ -1,0 +1,681 @@
+openapi: 3.0.0
+info:
+  description: "Учебный стенд для QA по Kafka: отправка событий продюсером,
+    обработка 3 консьюмерами, запись в Postgres, проверка сценариев (порядок,
+    дубликаты, DLQ, лаги)."
+  title: QA Kafka Lab — HR Profiles Trainer
+  contact: {}
+  license:
+    name: MIT
+    url: https://opensource.org/license/mit
+  version: "1.0"
+paths:
+  /dlq:
+    get:
+      tags:
+        - Producer
+      summary: Сообщения DLQ
+      parameters:
+        - description: Лимит
+          name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - description: Смещение
+          name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.listResponse"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.errorResponse"
+  /events:
+    get:
+      tags:
+        - Producer
+      summary: Сырые события (эмуляция kafka_events)
+      parameters:
+        - description: Лимит
+          name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - description: Смещение
+          name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.listResponse"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.errorResponse"
+  /history:
+    post:
+      tags:
+        - CRUD-History
+      summary: Добавить запись в историю работы
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/api.createHistoryRequest"
+        description: История
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.okResponse"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.errorResponse"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.errorResponse"
+  "/history/{employee_id}":
+    get:
+      tags:
+        - CRUD-History
+      summary: История работы сотрудника
+      parameters:
+        - description: Идентификатор сотрудника
+          name: employee_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - description: Лимит
+          name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - description: Смещение
+          name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.listResponse"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.errorResponse"
+  "/history/{id}":
+    put:
+      tags:
+        - CRUD-History
+      summary: Обновить запись истории
+      parameters:
+        - description: ID записи истории
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/api.updateHistoryRequest"
+        description: Изменяемые поля
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.okResponse"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.errorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.errorResponse"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.errorResponse"
+    delete:
+      tags:
+        - CRUD-History
+      summary: Удалить запись истории
+      parameters:
+        - description: ID записи истории
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.okResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.errorResponse"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.errorResponse"
+  /producer/history:
+    post:
+      tags:
+        - Producer
+      summary: Публикация события в hr.history
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/api.historyProduceRequest"
+        description: payload
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.okResponse"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.errorResponse"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.errorResponse"
+        "501":
+          description: Not Implemented
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.errorResponse"
+  /producer/personal:
+    post:
+      tags:
+        - Producer
+      summary: Публикация события в hr.personal
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/api.personalProduceRequest"
+        description: payload
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.okResponse"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.errorResponse"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.errorResponse"
+        "501":
+          description: Not Implemented
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.errorResponse"
+  /producer/position:
+    post:
+      tags:
+        - Producer
+      summary: Публикация события в hr.positions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/api.positionProduceRequest"
+        description: payload
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.okResponse"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.errorResponse"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.errorResponse"
+        "501":
+          description: Not Implemented
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.errorResponse"
+  /profiles:
+    get:
+      tags:
+        - CRUD-Profiles
+      summary: Список профилей сотрудников
+      parameters:
+        - description: Лимит
+          name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - description: Смещение
+          name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.listResponse"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.errorResponse"
+    post:
+      tags:
+        - CRUD-Profiles
+      summary: Создать профиль
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/api.createProfileRequest"
+        description: Профиль
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.okResponse"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.errorResponse"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.errorResponse"
+  "/profiles/{employee_id}":
+    get:
+      tags:
+        - CRUD-Profiles
+      summary: Получить профиль по employee_id
+      parameters:
+        - description: Идентификатор сотрудника
+          name: employee_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.objectResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.errorResponse"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.errorResponse"
+    put:
+      tags:
+        - CRUD-Profiles
+      summary: Обновить профиль
+      parameters:
+        - description: Идентификатор сотрудника
+          name: employee_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/api.updateProfileRequest"
+        description: Изменяемые поля
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.okResponse"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.errorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.errorResponse"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.errorResponse"
+    delete:
+      tags:
+        - CRUD-Profiles
+      summary: Удалить профиль
+      parameters:
+        - description: Идентификатор сотрудника
+          name: employee_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.okResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.errorResponse"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.errorResponse"
+servers:
+  - url: http://127.0.0.1:8080
+
+    description: Local access
+
+  - url: https://user-app.brands.dev.itemcloud.ru
+
+    description: Dev Swagger UI
+  - url: /
+components:
+  schemas:
+    api.createHistoryRequest:
+      type: object
+      properties:
+        company:
+          type: string
+          example: Acme Corp
+        employee_id:
+          type: string
+          example: e-1024
+        period_from:
+          type: string
+          example: 2022-07-01
+        period_to:
+          type: string
+          example: 2025-09-30
+        position:
+          type: string
+          example: QA
+        stack:
+          type: array
+          items:
+            type: string
+          example:
+            - Python
+            - Pytest
+    api.createProfileRequest:
+      type: object
+      properties:
+        birth_date:
+          type: string
+          example: 1994-06-12
+        department:
+          type: string
+          example: Quality Assurance
+        effective_from:
+          type: string
+          example: 2025-10-01
+        email:
+          type: string
+          example: anna@example.com
+        employee_id:
+          type: string
+          example: e-1024
+        first_name:
+          type: string
+          example: Anna
+        grade:
+          type: string
+          example: Middle
+        last_name:
+          type: string
+          example: Ivanova
+        phone:
+          type: string
+          example: +33-123-45-67
+        title:
+          type: string
+          example: QA Engineer
+    api.errorResponse:
+      type: object
+      properties:
+        code:
+          type: string
+          example: invalid_json
+        message:
+          type: string
+          example: Некорректный JSON
+        status:
+          type: string
+          example: error
+    api.historyProduceRequest:
+      type: object
+      properties:
+        company:
+          type: string
+        employee_id:
+          type: string
+        message_id:
+          type: string
+        period_from:
+          type: string
+        period_to:
+          type: string
+        position:
+          type: string
+        stack:
+          type: array
+          items:
+            type: string
+    api.listResponse:
+      type: object
+      properties:
+        items: {}
+        limit:
+          type: integer
+        offset:
+          type: integer
+    api.objectResponse:
+      type: object
+      properties:
+        data: {}
+    api.okResponse:
+      type: object
+      properties:
+        msg:
+          type: string
+          example: Готово
+        status:
+          type: string
+          example: ok
+    api.personalProduceRequest:
+      type: object
+      properties:
+        birth_date:
+          type: string
+        email:
+          type: string
+        employee_id:
+          type: string
+        first_name:
+          type: string
+        last_name:
+          type: string
+        message_id:
+          type: string
+        phone:
+          type: string
+    api.positionProduceRequest:
+      type: object
+      properties:
+        department:
+          type: string
+        effective_from:
+          type: string
+        employee_id:
+          type: string
+        grade:
+          type: string
+        message_id:
+          type: string
+        title:
+          type: string
+    api.updateHistoryRequest:
+      type: object
+      properties:
+        company:
+          type: string
+        period_from:
+          type: string
+        period_to:
+          type: string
+        position:
+          type: string
+        stack:
+          type: array
+          items:
+            type: string
+    api.updateProfileRequest:
+      type: object
+      properties:
+        birth_date:
+          type: string
+        department:
+          type: string
+        effective_from:
+          type: string
+        email:
+          type: string
+        first_name:
+          type: string
+        grade:
+          type: string
+        last_name:
+          type: string
+        phone:
+          type: string
+        title:
+          type: string

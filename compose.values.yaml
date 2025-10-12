@@ -1,0 +1,8 @@
+kafka:
+  enabled: true
+
+postgres:
+  enabled: true
+
+swagger:
+  enabled: true

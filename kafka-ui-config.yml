@@ -1,0 +1,11 @@
+auth:
+  type: DISABLED
+kafka:
+  clusters:
+    - bootstrapServers: kafka0:29092
+      name: Kafka
+      properties: {}
+      readOnly: false
+rbac:
+  roles: []
+webclient: {}

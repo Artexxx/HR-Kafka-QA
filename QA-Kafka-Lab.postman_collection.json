@@ -1,0 +1,369 @@
+{
+  "info": {
+    "name": "QA Kafka Lab — HR Profiles Trainer",
+    "_postman_id": "d882be68-d9c2-47ce-b88d-5c7e6cffabf2",
+    "description": "Postman коллекция для CRUD по Postgres и продюсер-эндпоинтов.\nБазовый URL настраивается через переменную `baseUrl`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Producer",
+      "description": "Публикация событий в Kafka через HTTP-ручки сервиса",
+      "item": [
+        {
+          "name": "Produce Personal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/producer/personal",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "producer",
+                "personal"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message_id\": \"fd3f9edb-37a0-41ff-9a1e-7a3c9a5c820a\",\n  \"employee_id\": \"e-1024\",\n  \"first_name\": \"Anna\",\n  \"last_name\": \"Ivanova\",\n  \"birth_date\": \"1994-06-12\",\n  \"email\": \"anna@example.com\",\n  \"phone\": \"+33-123-45-67\"\n}"
+            },
+            "description": "Принимает DTO профиля (с `message_id`) и отправляет событие `hr.personal`"
+          }
+        },
+        {
+          "name": "Produce Position",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/producer/position",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "producer",
+                "position"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message_id\": \"9f1a7c6e-4402-40cf-b8db-55cb08fba4c1\",\n  \"employee_id\": \"e-1024\",\n  \"title\": \"QA Engineer\",\n  \"department\": \"Testing\",\n  \"grade\": \"Middle\",\n  \"effective_from\": \"2025-10-01\"\n}"
+            },
+            "description": "Принимает DTO профиля (с должностными полями + `message_id`) и отправляет событие `hr.positions`"
+          }
+        },
+        {
+          "name": "Produce History",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/producer/history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "producer",
+                "history"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message_id\": \"b3e9e30a-4b8f-4c11-9f7b-0b1c41f25842\",\n  \"employee_id\": \"e-1024\",\n  \"company\": \"Acme Corp\",\n  \"position\": \"QA\",\n  \"period_from\": \"2022-07-01\",\n  \"period_to\": \"2025-09-30\",\n  \"stack\": [\"Python\", \"Pytest\"]\n}"
+            },
+            "description": "Принимает DTO записи истории (с `message_id`) и отправляет событие `hr.history`"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Profiles (CRUD)",
+      "item": [
+        {
+          "name": "Create Profile",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/profiles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "profiles"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employee_id\": \"e-1024\",\n  \"first_name\": \"Anna\",\n  \"last_name\": \"Ivanova\",\n  \"birth_date\": \"1994-06-12\",\n  \"email\": \"anna@example.com\",\n  \"phone\": \"+33-123-45-67\",\n  \"title\": \"QA Engineer\",\n  \"department\": \"Quality Assurance\",\n  \"grade\": \"Middle\",\n  \"effective_from\": \"2025-10-01\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/profiles/e-1024",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "profiles",
+                "e-1024"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Anna-Maria\",\n  \"email\": \"anna.maria@example.com\",\n  \"title\": \"Senior QA Engineer\",\n  \"grade\": \"Senior\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/profiles/e-1024",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "profiles",
+                "e-1024"
+              ]
+            }
+          }
+        },
+        {
+          "name": "List Profiles",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/profiles?limit=50&offset=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "profiles"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Profile",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/profiles/e-1024",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "profiles",
+                "e-1024"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Employment History (CRUD)",
+      "item": [
+        {
+          "name": "Create History",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "history"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employee_id\": \"e-1024\",\n  \"company\": \"Acme Corp\",\n  \"position\": \"QA\",\n  \"period_from\": \"2022-07-01\",\n  \"period_to\": \"2025-09-30\",\n  \"stack\": [\"Python\", \"Pytest\", \"Postman\"]\n}"
+            }
+          }
+        },
+        {
+          "name": "Update History",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/history/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "history",
+                "1"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employee_id\": \"e-1024\",\n  \"company\": \"Acme Corp\",\n  \"position\": \"QA Engineer\",\n  \"period_from\": \"2022-07-01\",\n  \"period_to\": \"2025-09-30\",\n  \"stack\": [\"Python\", \"Pytest\", \"Kafka\"]\n}"
+            }
+          }
+        },
+        {
+          "name": "Get History By Employee",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/history/e-1024?limit=50&offset=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "history",
+                "e-1024"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete History",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/history/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "history",
+                "1"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Events & DLQ",
+      "item": [
+        {
+          "name": "List Events",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/events?limit=100&offset=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "events"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "100"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "List DLQ",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/dlq?limit=100&offset=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dlq"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "100"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:7011"
+    }
+  ]
+}
