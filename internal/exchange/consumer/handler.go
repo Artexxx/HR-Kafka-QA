@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/Artexxx/github.com/Artexxx/HR-Kafka-QA/internal/dto"
+	"github.com/Artexxx/HR-Kafka-QA/internal/dto"
 
 	"github.com/IBM/sarama"
 	"github.com/rs/zerolog"

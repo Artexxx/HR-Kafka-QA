@@ -5,8 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Artexxx/github.com/Artexxx/HR-Kafka-QA/internal/dto"
-
+	"github.com/Artexxx/HR-Kafka-QA/internal/dto"
 	"github.com/valyala/fasthttp"
 )
 
