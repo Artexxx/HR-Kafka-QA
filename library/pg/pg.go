@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"sync"
 
-	"HR-Kafka-QA/library/yamlenv"
-
+	"github.com/Artexxx/HR-Kafka-QA/library/yamlenv"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-
 	"github.com/rs/zerolog"
 )
 
