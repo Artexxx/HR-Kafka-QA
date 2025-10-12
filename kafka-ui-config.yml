@@ -4,8 +4,8 @@ kafka:
   clusters:
     - bootstrapServers: kafka0:29092
       name: Kafka
-      properties: {}
+      properties: { }
       readOnly: false
 rbac:
-  roles: []
-webclient: {}
+  roles: [ ]
+webclient: { }

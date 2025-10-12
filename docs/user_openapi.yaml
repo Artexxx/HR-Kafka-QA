@@ -4,7 +4,7 @@ info:
     обработка 3 консьюмерами, запись в Postgres, проверка сценариев (порядок,
     дубликаты, DLQ, лаги)."
   title: QA Kafka Lab — HR Profiles Trainer
-  contact: {}
+  contact: { }
   license:
     name: MIT
     url: https://opensource.org/license/mit
@@ -593,7 +593,7 @@ components:
     api.listResponse:
       type: object
       properties:
-        items: {}
+        items: { }
         limit:
           type: integer
         offset:
@@ -601,7 +601,7 @@ components:
     api.objectResponse:
       type: object
       properties:
-        data: {}
+        data: { }
     api.okResponse:
       type: object
       properties:

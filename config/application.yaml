@@ -5,9 +5,9 @@ kafka:
   bootstrap: "kafka0:9092"
   producer_client_id: "qa-producer"
   topics:
-    personal:  "hr.personal"
+    personal: "hr.personal"
     positions: "hr.positions"
-    history:   "hr.history"
+    history: "hr.history"
 
 userAPI:
   port: 8080
