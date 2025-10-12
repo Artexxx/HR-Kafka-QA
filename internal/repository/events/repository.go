@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"HR-Kafka-QA/internal/dto"
+	"github.com/Artexxx/github.com/Artexxx/HR-Kafka-QA/internal/dto"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"

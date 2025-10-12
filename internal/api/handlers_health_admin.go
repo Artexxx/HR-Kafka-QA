@@ -1,6 +1,8 @@
 package api
 
-import "github.com/valyala/fasthttp"
+import (
+	"github.com/valyala/fasthttp"
+)
 
 // @Summary Проверка здоровья сервиса
 // @Tags    Admin

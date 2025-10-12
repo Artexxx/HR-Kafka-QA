@@ -2,6 +2,7 @@ package dto
 
 import (
 	"encoding/json"
+
 	"github.com/google/uuid"
 )
 

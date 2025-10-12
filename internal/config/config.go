@@ -1,8 +1,8 @@
 package config
 
 import (
-	"HR-Kafka-QA/library/pg"
-	"HR-Kafka-QA/library/yamlenv"
+	"github.com/Artexxx/github.com/Artexxx/HR-Kafka-QA/library/pg"
+	"github.com/Artexxx/github.com/Artexxx/HR-Kafka-QA/library/yamlenv"
 )
 
 type Config struct {

@@ -3,12 +3,14 @@ package producer
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"time"
 
-	"HR-Kafka-QA/internal/dto"
+	"github.com/Artexxx/HR-Kafka-QA/internal/dto"
 
 	"github.com/IBM/sarama"
-	"github.com/pkg/errors"
+
 	"github.com/rs/zerolog"
 )
 
@@ -81,7 +83,7 @@ func (p *HRProducer) ProducePersonal(ctx context.Context, messageID string, prof
 
 	body, err := json.Marshal(env)
 	if err != nil {
-		return errors.Wrap(err, "marshal personal envelope")
+		return fmt.Errorf("marshal personal envelope: %w", err)
 	}
 
 	return p.send(ctx, p.topicPersonal, pl.EmployeeID, body, map[string]string{
@@ -125,7 +127,7 @@ func (p *HRProducer) ProducePosition(ctx context.Context, messageID string, prof
 
 	body, err := json.Marshal(env)
 	if err != nil {
-		return errors.Wrap(err, "marshal position envelope")
+		return fmt.Errorf("marshal position envelope: %w", err)
 	}
 
 	return p.send(ctx, p.topicPositions, pl.EmployeeID, body, map[string]string{
@@ -167,7 +169,7 @@ func (p *HRProducer) ProduceHistory(ctx context.Context, messageID string, h dto
 
 	body, err := json.Marshal(env)
 	if err != nil {
-		return errors.Wrap(err, "marshal history envelope")
+		return fmt.Errorf("marshal history envelope: %w", err)
 	}
 
 	return p.send(ctx, p.topicHistory, pl.EmployeeID, body, map[string]string{
@@ -205,7 +207,7 @@ func (p *HRProducer) send(_ context.Context, topic, key string, value []byte, he
 			Int("headers_count", len(headers)).
 			Int("bytes", len(value)).
 			Msg("failed to send kafka message")
-		return errors.Wrap(err, "send kafka message")
+		return fmt.Errorf("send kafka message: %w", err)
 	}
 
 	p.log.Info().

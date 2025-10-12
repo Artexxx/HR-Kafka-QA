@@ -2,13 +2,14 @@ package pg
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"HR-Kafka-QA/library/yamlenv"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/pkg/errors"
+
 	"github.com/rs/zerolog"
 )
 
@@ -33,7 +34,7 @@ func NewPG(
 	pgOnce.Do(func() {
 		cfg, parseErr := pgxpool.ParseConfig(conn)
 		if parseErr != nil {
-			err = errors.Wrap(parseErr, "unable to parse connection config")
+			err = fmt.Errorf("unable to parse connection config: %w", parseErr)
 			log.Error().Err(err).Send()
 			return
 		}
@@ -44,14 +45,14 @@ func NewPG(
 
 		db, poolErr := pgxpool.NewWithConfig(ctx, cfg)
 		if poolErr != nil {
-			err = errors.Wrap(poolErr, "unable to create connection pool")
+			err = fmt.Errorf("unable to create connection pool: %w", poolErr)
 			log.Error().Err(err).Send()
 			return
 		}
 
 		err = checkDBConnection(ctx, db, log)
 		if err != nil {
-			err = errors.Wrap(err, "database connection check failed")
+			err = fmt.Errorf("database connection check failed: %w", err)
 			log.Error().Err(err).Send()
 			return
 		}

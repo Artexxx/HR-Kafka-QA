@@ -6,7 +6,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 
-	"HR-Kafka-QA/internal/dto"
+	"github.com/Artexxx/HR-Kafka-QA/internal/dto"
 )
 
 type PgxPoolIface interface {

@@ -7,7 +7,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"HR-Kafka-QA/internal/dto"
+	"github.com/Artexxx/HR-Kafka-QA/internal/dto"
 
 	"github.com/fasthttp/router"
 	"github.com/google/uuid"

@@ -1,4 +1,4 @@
-module HR-Kafka-QA
+module github.com/Artexxx/HR-Kafka-QA
 
 go 1.24.0
 

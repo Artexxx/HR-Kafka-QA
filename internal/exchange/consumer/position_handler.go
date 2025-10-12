@@ -1,8 +1,9 @@
 package consumer
 
 import (
-	"HR-Kafka-QA/internal/dto"
 	"fmt"
+
+	"github.com/Artexxx/github.com/Artexxx/HR-Kafka-QA/internal/dto"
 
 	"github.com/IBM/sarama"
 	"github.com/google/uuid"

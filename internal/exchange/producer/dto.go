@@ -1,6 +1,8 @@
 package producer
 
-import "time"
+import (
+	"time"
+)
 
 type PersonalPayload struct {
 	MessageID  string `json:"message_id"`
