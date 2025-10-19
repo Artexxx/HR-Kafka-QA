@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/Artexxx/HR-Kafka-QA/internal/dto"
-
 	"github.com/IBM/sarama"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
@@ -29,35 +28,37 @@ func NewPositionsRunner(
 
 	return newRunner(bootstrap, groupID, topic, h, log)
 }
-func (h *handler) processPosition(sess sarama.ConsumerGroupSession, msg *sarama.ConsumerMessage, env Envelope[PositionPayload]) bool {
+func (h *handler) processPosition(sess sarama.ConsumerGroupSession, msg *sarama.ConsumerMessage, event Envelope[PositionPayload]) bool {
 	ctx := sess.Context()
 
-	msgID, err := uuid.Parse(env.MessageID)
-	if err != nil || env.EmployeeID == "" {
-		h.toDLQ(ctx, msg, "missing required field employee_iD")
-
+	if event.MessageID != uuid.Nil {
+		h.toDLQ(ctx, msg, "missing required field message_id")
 		return h.commitOnDLQ
 	}
 
-	exists, err := h.events.ExistsMessage(ctx, msgID)
+	if event.EmployeeID == "" {
+		h.toDLQ(ctx, msg, "missing required field employee_id")
+		return h.commitOnDLQ
+	}
+
+	exists, err := h.events.ExistsMessage(ctx, event.MessageID)
 	if err != nil {
-		h.toDLQ(ctx, msg, fmt.Sprintf("events.ExistsMessage: db error exists: %v", err))
+		h.toDLQ(ctx, msg, fmt.Sprintf("events.ExistsMessage: %v", err))
 
 		return h.commitOnDLQ
 	}
 	if exists {
-		h.log.Info().Str("message_id", env.MessageID).Str("employee_id", env.EmployeeID).Msg("duplicate message, skip (idempotency)")
+		h.log.Info().Str("message_id", event.MessageID.String()).Str("employee_id", event.EmployeeID).Msg("duplicate message, skip (idempotency)")
 		return true
 	}
 
-	if verr := validatePosition(env.Payload); verr != "" {
+	if verr := validatePosition(event.Payload); verr != "" {
 		h.toDLQ(ctx, msg, verr)
-
 		return h.commitOnDLQ
 	}
 
 	if err := h.events.InsertEvent(ctx, dto.KafkaEvent{
-		MessageID: msgID,
+		MessageID: event.MessageID,
 		Topic:     msg.Topic,
 		Key:       string(msg.Key),
 		Partition: int(msg.Partition),
@@ -69,29 +70,31 @@ func (h *handler) processPosition(sess sarama.ConsumerGroupSession, msg *sarama.
 		return h.commitOnDLQ
 	}
 
-	title := env.Payload.Title
-	dept := env.Payload.Department
-	grade := env.Payload.Grade
-	eff := env.Payload.EffectiveFrom
+	var (
+		title = event.Payload.Title
+		dept  = event.Payload.Department
+		grade = event.Payload.Grade
+		eff   = event.Payload.EffectiveFrom
+	)
 
-	p := dto.EmployeeProfile{
-		EmployeeID: env.EmployeeID,
-		UpdatedAt:  "",
+	payload := dto.EmployeeProfile{
+		EmployeeID: event.EmployeeID,
 	}
+
 	if title != "" {
-		p.Title = &title
+		payload.Title = &title
 	}
 	if dept != "" {
-		p.Department = &dept
+		payload.Department = &dept
 	}
 	if grade != "" {
-		p.Grade = &grade
+		payload.Grade = &grade
 	}
 	if eff != "" {
-		p.EffectiveFrom = &eff
+		payload.EffectiveFrom = &eff
 	}
 
-	if err := h.profiles.UpsertPosition(ctx, p); err != nil {
+	if err := h.profiles.UpsertPosition(ctx, payload); err != nil {
 		h.toDLQ(ctx, msg, fmt.Sprintf("profiles.UpsertPosition: db error upsert position: %v", err))
 
 		return h.commitOnDLQ

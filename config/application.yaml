@@ -2,7 +2,7 @@ postgres:
   conn: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=${POSTGRES_SSL_MODE}
 
 kafka:
-  bootstrap: "kafka0:9092"
+  bootstrap: "kafka0:29092"
   producer_client_id: "qa-producer"
   topics:
     personal: "hr.personal"

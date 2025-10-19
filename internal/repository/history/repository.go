@@ -2,11 +2,12 @@ package history
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
+	"errors"
+	"fmt"
 
 	"github.com/Artexxx/HR-Kafka-QA/internal/dto"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type PgxPoolIface interface {
@@ -24,61 +25,79 @@ func NewRepository(pool PgxPoolIface) *Repository {
 	return &Repository{pool: pool}
 }
 
-func (r *Repository) Insert(ctx context.Context, h dto.EmploymentHistory) error {
-	q := `
-INSERT INTO employment_history
-	(employee_id, company, position, period_from, period_to, stack, created_at)
-VALUES
-	($1, $2, $3, $4::date, $5::date, $6, NOW());
+func (r *Repository) Insert(ctx context.Context, history dto.EmploymentHistory) error {
+	query := `
+insert into employment_history
+  (employee_id, company, position, period_from, period_to, stack, created_at)
+values
+  (@employee_id, @company, @position, @period_from::date, @period_to::date, @stack, now());
 `
-	_, err := r.pool.Exec(ctx, q, h.EmployeeID, h.Company, h.Position, h.PeriodFrom, h.PeriodTo, h.Stack)
+	args := pgx.NamedArgs{
+		"employee_id": history.EmployeeID,
+		"company":     history.Company,
+		"position":    history.Position,
+		"period_from": history.PeriodFrom,
+		"period_to":   history.PeriodTo,
+		"stack":       history.Stack,
+	}
+
+	_, err := r.pool.Exec(ctx, query, args)
 	if err != nil {
-		return err
+		return fmt.Errorf("pool.Exec: %w", err)
 	}
 
 	return nil
 }
 
-func (r *Repository) Update(ctx context.Context, h dto.EmploymentHistory) error {
-	q := `
-UPDATE employment_history SET
-	employee_id = $2,
-	company = $3,
-	position = $4,
-	period_from = $5::date,
-	period_to = $6::date,
-	stack = $7
-WHERE id = $1`
-	_, err := r.pool.Exec(ctx, q,
-		h.ID, h.EmployeeID, h.Company, h.Position, h.PeriodFrom, h.PeriodTo, h.Stack,
-	)
+func (r *Repository) Update(ctx context.Context, history dto.EmploymentHistory) error {
+	query := `
+update employment_history set
+  employee_id = @employee_id,
+  company     = @company,
+  position    = @position,
+  period_from = @period_from::date,
+  period_to   = @period_to::date,
+  stack       = @stack
+where id = @id;
+`
+	args := pgx.NamedArgs{
+		"id":          history.ID,
+		"employee_id": history.EmployeeID,
+		"company":     history.Company,
+		"position":    history.Position,
+		"period_from": history.PeriodFrom,
+		"period_to":   history.PeriodTo,
+		"stack":       history.Stack,
+	}
+
+	tag, err := r.pool.Exec(ctx, query, args)
 	if err != nil {
-		return err
+		return fmt.Errorf("pool.Exec: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return dto.ErrNotFound
 	}
 
 	return nil
 }
 
 func (r *Repository) Delete(ctx context.Context, id int64) error {
-	q := `DELETE FROM employment_history WHERE id = $1`
-	_, err := r.pool.Exec(ctx, q, id)
+	query := `delete from employment_history where id = $1`
+
+	tag, err := r.pool.Exec(ctx, query, id)
 	if err != nil {
-		return err
+		return fmt.Errorf("pool.Exec: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return dto.ErrNotFound
 	}
 
 	return nil
 }
 
-func (r *Repository) ListByEmployee(ctx context.Context, employeeID string, limit, offset int) ([]dto.EmploymentHistory, error) {
-	if limit <= 0 {
-		limit = 100
-	}
-	if offset < 0 {
-		offset = 0
-	}
-
-	q := `
-SELECT id,
+func (r *Repository) ListByEmployee(ctx context.Context, employeeID string) ([]dto.EmploymentHistory, error) {
+	query := `
+select id,
 	   employee_id,
 	   company,
 	   position,
@@ -86,35 +105,38 @@ SELECT id,
 	   to_char(period_to,'YYYY-MM-DD'),
 	   stack,
 	   to_char(created_at,'YYYY-MM-DD"T"HH24:MI:SSOF')
-FROM employment_history
-WHERE employee_id = $1
-ORDER BY id DESC
-LIMIT $2 OFFSET $3
+from employment_history
+where employee_id = $1
+order by id desc
 `
-	rows, err := r.pool.Query(ctx, q, employeeID, limit, offset)
+	rows, err := r.pool.Query(ctx, query, employeeID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("pool.Query: %w", err)
 	}
 	defer rows.Close()
 
 	var out []dto.EmploymentHistory
 	for rows.Next() {
-		var it dto.EmploymentHistory
+		var history dto.EmploymentHistory
 
-		err = rows.Scan(&it.ID, &it.EmployeeID, &it.Company, &it.Position, &it.PeriodFrom, &it.PeriodTo, &it.Stack, &it.CreatedAt)
+		err = rows.Scan(&history.ID, &history.EmployeeID, &history.Company, &history.Position, &history.PeriodFrom, &history.PeriodTo, &history.Stack, &history.CreatedAt)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("rows.Scan: %w", err)
 		}
 
-		out = append(out, it)
+		out = append(out, history)
 	}
 
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows.Err: %w", err)
+	}
+
+	return out, nil
 }
 
 func (r *Repository) GetByID(ctx context.Context, id int64) (*dto.EmploymentHistory, error) {
-	q := `
-SELECT id,
+	query := `
+select id,
 	   employee_id,
 	   company,
 	   position,
@@ -122,16 +144,20 @@ SELECT id,
 	   to_char(period_to,'YYYY-MM-DD'),
 	   stack,
 	   to_char(created_at,'YYYY-MM-DD"T"HH24:MI:SSOF')
-FROM employment_history
-WHERE id = $1;
+from employment_history
+where id = $1;
 `
-	row := r.pool.QueryRow(ctx, q, id)
+	row := r.pool.QueryRow(ctx, query, id)
 
-	var it dto.EmploymentHistory
-	err := row.Scan(&it.ID, &it.EmployeeID, &it.Company, &it.Position, &it.PeriodFrom, &it.PeriodTo, &it.Stack, &it.CreatedAt)
+	var history dto.EmploymentHistory
+	err := row.Scan(&history.ID, &history.EmployeeID, &history.Company, &history.Position, &history.PeriodFrom, &history.PeriodTo, &history.Stack, &history.CreatedAt)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, dto.ErrNotFound
+		}
+
+		return nil, fmt.Errorf("row.Scan: %w", err)
 	}
 
-	return &it, nil
+	return &history, nil
 }

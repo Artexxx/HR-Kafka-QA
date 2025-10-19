@@ -18,3 +18,18 @@ CREATE TABLE "public"."kafka_events" ("id" bigserial NOT NULL, "message_id" uuid
 CREATE INDEX "idx_kafka_events_topic_received_at" ON "public"."kafka_events" ("topic", "received_at" DESC);
 -- Create index "kafka_events_message_id_key" to table: "kafka_events"
 CREATE UNIQUE INDEX "kafka_events_message_id_key" ON "public"."kafka_events" ("message_id");
+
+-- Создаём роль "только чтение"
+CREATE ROLE qa_readonly LOGIN PASSWORD 'pg-ro-secret' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT;
+
+-- Запретим PUBLIC на схему, если нужно
+REVOKE ALL ON SCHEMA public FROM PUBLIC;
+
+-- Дадим доступ на чтение к существующим объектам
+GRANT USAGE ON SCHEMA public TO qa_readonly;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO qa_readonly;
+GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO qa_readonly;
+
+-- И на будущие объекты по умолчанию
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO qa_readonly;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON SEQUENCES TO qa_readonly;

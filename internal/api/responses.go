@@ -2,8 +2,20 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 
 	"github.com/valyala/fasthttp"
+)
+
+var (
+	ErrMessageIDRequired = errors.New("поле message_id не передано")
+
+	ErrHistoryIDRequired = errors.New("поле history_id не передано")
+	ErrHistoryNotFound   = errors.New("история не найдена")
+
+	ErrEmployeeIDRequired   = errors.New("поле employee id не передано")
+	ErrProfileNotFound      = errors.New("профиль сотрудника не найден")
+	ErrProfileAlreadyExists = errors.New("профиль сотрудника уже существует")
 )
 
 type okResponse struct {
@@ -12,55 +24,25 @@ type okResponse struct {
 }
 
 type errorResponse struct {
-	Status  string `json:"status" example:"error"`
-	Code    string `json:"code" example:"invalid_json"`
-	Message string `json:"message" example:"Некорректный JSON"`
-}
-
-type listResponse struct {
-	Items  any `json:"items"`
-	Limit  int `json:"limit"`
-	Offset int `json:"offset"`
-}
-
-type objectResponse struct {
-	Data any `json:"data"`
+	Code    string `json:"code"`
+	Message string `json:"message"`
 }
 
 func writeJSON(ctx *fasthttp.RequestCtx, statusCode int, body any) {
 	ctx.Response.Header.Set("Content-Type", "application/json; charset=utf-8")
 	ctx.SetStatusCode(statusCode)
+
 	_ = json.NewEncoder(ctx).Encode(body)
 }
 
 func ok(ctx *fasthttp.RequestCtx, msg string) {
 	writeJSON(ctx, fasthttp.StatusOK, okResponse{Status: "ok", Msg: msg})
 }
-func badRequest(ctx *fasthttp.RequestCtx, code, message string) {
-	writeJSON(ctx, fasthttp.StatusBadRequest, errorResponse{
-		Status:  "error",
-		Code:    code,
-		Message: message,
-	})
-}
-func notFound(ctx *fasthttp.RequestCtx, code, message string) {
-	writeJSON(ctx, fasthttp.StatusNotFound, errorResponse{
-		Status:  "error",
-		Code:    code,
-		Message: message,
-	})
-}
-func notImplemented(ctx *fasthttp.RequestCtx, code, message string) {
-	writeJSON(ctx, fasthttp.StatusNotImplemented, errorResponse{
-		Status:  "error",
-		Code:    code,
-		Message: message,
-	})
-}
-func serverError(ctx *fasthttp.RequestCtx, err error) {
-	writeJSON(ctx, fasthttp.StatusInternalServerError, errorResponse{
-		Status:  "error",
-		Code:    "internal_error",
-		Message: "Внутренняя ошибка сервера",
-	})
+
+func writeError(ctx *fasthttp.RequestCtx, httpStatus int, err error) {
+	ctx.Response.Header.Set("Content-Type", "application/json; charset=utf-8")
+	ctx.SetStatusCode(httpStatus)
+	_ = json.NewEncoder(ctx).Encode(errorResponse{Code: fasthttp.StatusMessage(httpStatus), Message: err.Error()})
+
+	return
 }

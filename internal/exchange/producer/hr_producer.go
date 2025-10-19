@@ -8,9 +8,8 @@ import (
 	"time"
 
 	"github.com/Artexxx/HR-Kafka-QA/internal/dto"
-
 	"github.com/IBM/sarama"
-
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 )
 
@@ -27,7 +26,7 @@ type Config struct {
 	TopicPersonal  string
 	TopicPositions string
 	TopicHistory   string
-	Source         string // например: "qa-kafka-lab"
+	Source         string
 }
 
 func NewHRProducer(sp sarama.SyncProducer, cfg Config, log zerolog.Logger) *HRProducer {
@@ -48,134 +47,122 @@ func (p *HRProducer) Close() error {
 	return p.sp.Close()
 }
 
-func (p *HRProducer) ProducePersonal(ctx context.Context, messageID string, profile dto.EmployeeProfile) error {
-	if messageID == "" || profile.EmployeeID == "" {
-		return errors.New("missing message_id or employee_id")
-	}
+func (p *HRProducer) ProducePersonal(ctx context.Context, messageID uuid.UUID, profile dto.EmployeeProfile) error {
+	var payload PersonalPayload
 
-	var pl PersonalPayload
-	pl.MessageID = messageID
-	pl.EmployeeID = profile.EmployeeID
+	payload.MessageID = messageID
+	payload.EmployeeID = profile.EmployeeID
 	if profile.FirstName != nil {
-		pl.FirstName = *profile.FirstName
+		payload.FirstName = *profile.FirstName
 	}
 	if profile.LastName != nil {
-		pl.LastName = *profile.LastName
+		payload.LastName = *profile.LastName
 	}
 	if profile.BirthDate != nil {
-		pl.BirthDate = *profile.BirthDate
+		payload.BirthDate = *profile.BirthDate
 	}
 	if profile.Email != nil {
-		pl.Contacts.Email = *profile.Email
+		payload.Contacts.Email = *profile.Email
 	}
 	if profile.Phone != nil {
-		pl.Contacts.Phone = *profile.Phone
+		payload.Contacts.Phone = *profile.Phone
 	}
 
-	env := Envelope[PersonalPayload]{
+	event := Envelope[PersonalPayload]{
 		Kind:       "personal",
-		MessageID:  pl.MessageID,
-		EmployeeID: pl.EmployeeID,
-		Payload:    pl,
+		MessageID:  payload.MessageID,
+		EmployeeID: payload.EmployeeID,
+		Payload:    payload,
 		Timestamp:  time.Now().UTC(),
 		Source:     p.source,
 	}
 
-	body, err := json.Marshal(env)
+	body, err := json.Marshal(event)
 	if err != nil {
 		return fmt.Errorf("marshal personal envelope: %w", err)
 	}
 
-	return p.send(ctx, p.topicPersonal, pl.EmployeeID, body, map[string]string{
+	return p.send(ctx, p.topicPersonal, payload.EmployeeID, body, map[string]string{
 		"event-kind":   "personal",
-		"message-id":   pl.MessageID,
-		"employee-id":  pl.EmployeeID,
+		"message-id":   payload.MessageID.String(),
+		"employee-id":  payload.EmployeeID,
 		"source":       p.source,
 		"content-type": "application/json",
 	})
 }
 
-func (p *HRProducer) ProducePosition(ctx context.Context, messageID string, profile dto.EmployeeProfile) error {
-	if messageID == "" || profile.EmployeeID == "" {
-		return errors.New("missing message_id or employee_id")
-	}
+func (p *HRProducer) ProducePosition(ctx context.Context, messageID uuid.UUID, profile dto.EmployeeProfile) error {
+	var payload PositionPayload
 
-	var pl PositionPayload
-	pl.MessageID = messageID
-	pl.EmployeeID = profile.EmployeeID
+	payload.MessageID = messageID
+	payload.EmployeeID = profile.EmployeeID
 	if profile.Title != nil {
-		pl.Title = *profile.Title
+		payload.Title = *profile.Title
 	}
 	if profile.Department != nil {
-		pl.Department = *profile.Department
+		payload.Department = *profile.Department
 	}
 	if profile.Grade != nil {
-		pl.Grade = *profile.Grade
+		payload.Grade = *profile.Grade
 	}
 	if profile.EffectiveFrom != nil {
-		pl.EffectiveFrom = *profile.EffectiveFrom
+		payload.EffectiveFrom = *profile.EffectiveFrom
 	}
 
-	env := Envelope[PositionPayload]{
+	event := Envelope[PositionPayload]{
 		Kind:       "position",
-		MessageID:  pl.MessageID,
-		EmployeeID: pl.EmployeeID,
-		Payload:    pl,
+		MessageID:  payload.MessageID,
+		EmployeeID: payload.EmployeeID,
+		Payload:    payload,
 		Timestamp:  time.Now().UTC(),
 		Source:     p.source,
 	}
 
-	body, err := json.Marshal(env)
+	body, err := json.Marshal(event)
 	if err != nil {
 		return fmt.Errorf("marshal position envelope: %w", err)
 	}
 
-	return p.send(ctx, p.topicPositions, pl.EmployeeID, body, map[string]string{
+	return p.send(ctx, p.topicPositions, payload.EmployeeID, body, map[string]string{
 		"event-kind":   "position",
-		"message-id":   pl.MessageID,
-		"employee-id":  pl.EmployeeID,
+		"message-id":   payload.MessageID.String(),
+		"employee-id":  payload.EmployeeID,
 		"source":       p.source,
 		"content-type": "application/json",
 	})
 }
 
-func (p *HRProducer) ProduceHistory(ctx context.Context, messageID string, h dto.EmploymentHistory) error {
-	if messageID == "" || h.EmployeeID == "" {
-		return errors.New("missing message_id or employee_id")
-	}
-	if h.PeriodTo < h.PeriodFrom {
-		return errors.New("invalid_period: period.to < period.from")
-	}
+func (p *HRProducer) ProduceHistory(ctx context.Context, messageID uuid.UUID, h dto.EmploymentHistory) error {
+	var payload HistoryPayload
 
-	var pl HistoryPayload
-	pl.MessageID = messageID
-	pl.EmployeeID = h.EmployeeID
-	pl.Company = h.Company
+	payload.MessageID = messageID
+	payload.EmployeeID = h.EmployeeID
+	payload.Company = h.Company
 	if h.Position != nil {
-		pl.Position = *h.Position
+		payload.Position = *h.Position
 	}
-	pl.Period.From = h.PeriodFrom
-	pl.Period.To = h.PeriodTo
-	pl.Stack = append(pl.Stack, h.Stack...)
+	payload.Period.From = h.PeriodFrom
+	payload.Period.To = h.PeriodTo
+	payload.Stack = append(payload.Stack, h.Stack...)
 
-	env := Envelope[HistoryPayload]{
+	event := Envelope[HistoryPayload]{
 		Kind:       "history",
-		MessageID:  pl.MessageID,
-		EmployeeID: pl.EmployeeID,
-		Payload:    pl,
+		MessageID:  payload.MessageID,
+		EmployeeID: payload.EmployeeID,
+		Payload:    payload,
 		Timestamp:  time.Now().UTC(),
 		Source:     p.source,
 	}
 
-	body, err := json.Marshal(env)
+	body, err := json.Marshal(event)
 	if err != nil {
-		return fmt.Errorf("marshal history envelope: %w", err)
+		return fmt.Errorf("json.Marshal: %w", err)
 	}
 
-	return p.send(ctx, p.topicHistory, pl.EmployeeID, body, map[string]string{
+	return p.send(ctx, p.topicHistory, payload.EmployeeID, body, map[string]string{
 		"event-kind":   "history",
-		"message-id":   pl.MessageID,
-		"employee-id":  pl.EmployeeID,
+		"message-id":   payload.MessageID.String(),
+		"employee-id":  payload.EmployeeID,
 		"source":       p.source,
 		"content-type": "application/json",
 	})

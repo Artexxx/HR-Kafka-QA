@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/Artexxx/HR-Kafka-QA/internal/dto"
-
 	"github.com/IBM/sarama"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
@@ -30,58 +29,62 @@ func NewHistoryRunner(
 	return newRunner(bootstrap, groupID, topic, h, log)
 }
 
-func (h *handler) processHistory(sess sarama.ConsumerGroupSession, msg *sarama.ConsumerMessage, env Envelope[HistoryPayload]) bool {
+func (h *handler) processHistory(sess sarama.ConsumerGroupSession, msg *sarama.ConsumerMessage, event Envelope[HistoryPayload]) bool {
 	ctx := sess.Context()
 
-	msgID, err := uuid.Parse(env.MessageID)
-	if err != nil || env.EmployeeID == "" {
-		h.toDLQ(ctx, msg, "missing_required_field")
+	if event.MessageID != uuid.Nil {
+		h.toDLQ(ctx, msg, "missing required field message_id")
 		return h.commitOnDLQ
 	}
 
-	exists, err := h.events.ExistsMessage(ctx, msgID)
+	if event.EmployeeID == "" {
+		h.toDLQ(ctx, msg, "missing required field employee_id")
+		return h.commitOnDLQ
+	}
+
+	exists, err := h.events.ExistsMessage(ctx, event.MessageID)
 	if err != nil {
 		h.toDLQ(ctx, msg, fmt.Sprintf("events.ExistsMessage: db error exists: %s", err.Error()))
 		return h.commitOnDLQ
 	}
 	if exists {
-		h.log.Info().Str("message_id", env.MessageID).Str("employee_id", env.EmployeeID).Msg("duplicate message, skip (idempotency)")
+		h.log.Info().Str("message_id", event.MessageID.String()).Str("employee_id", event.EmployeeID).Msg("duplicate message, skip (idempotency)")
 		return true
 	}
 
-	if verr := validateHistory(env.Payload); verr != "" {
+	if verr := validateHistory(event.Payload); verr != "" {
 		h.toDLQ(ctx, msg, verr)
 		return h.commitOnDLQ
 	}
 
 	if err := h.events.InsertEvent(ctx, dto.KafkaEvent{
-		MessageID: msgID,
+		MessageID: event.MessageID,
 		Topic:     msg.Topic,
 		Key:       string(msg.Key),
 		Partition: int(msg.Partition),
 		Offset:    msg.Offset,
 		Payload:   append([]byte(nil), msg.Value...),
 	}); err != nil {
-		h.toDLQ(ctx, msg, fmt.Sprintf("events.InsertEvent: db error insert history: %s", err.Error()))
+		h.toDLQ(ctx, msg, fmt.Sprintf("events.InsertEvent: %s", err.Error()))
 
 		return h.commitOnDLQ
 	}
 
 	hDto := dto.EmploymentHistory{
-		EmployeeID: env.EmployeeID,
-		Company:    env.Payload.Company,
+		EmployeeID: event.EmployeeID,
+		Company:    event.Payload.Company,
 		Position:   nil,
-		PeriodFrom: env.Payload.Period.From,
-		PeriodTo:   env.Payload.Period.To,
-		Stack:      append([]string(nil), env.Payload.Stack...),
+		PeriodFrom: event.Payload.Period.From,
+		PeriodTo:   event.Payload.Period.To,
+		Stack:      append([]string(nil), event.Payload.Stack...),
 	}
-	if env.Payload.Position != "" {
-		pos := env.Payload.Position
+	if event.Payload.Position != "" {
+		pos := event.Payload.Position
 		hDto.Position = &pos
 	}
 
 	if err := h.history.Insert(ctx, hDto); err != nil {
-		h.toDLQ(ctx, msg, fmt.Sprintf("history.Insert: db error insert history: %s", err.Error()))
+		h.toDLQ(ctx, msg, fmt.Sprintf("history.Insert: %s", err.Error()))
 
 		return h.commitOnDLQ
 	}

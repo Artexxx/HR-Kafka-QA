@@ -2,72 +2,65 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/Artexxx/HR-Kafka-QA/internal/dto"
-
 	"github.com/valyala/fasthttp"
 )
-
-type createHistoryRequest struct {
-	EmployeeID string   `json:"employee_id" example:"e-1024"`
-	Company    string   `json:"company" example:"Acme Corp"`
-	Position   *string  `json:"position,omitempty" example:"QA"`
-	PeriodFrom string   `json:"period_from" example:"2022-07-01"`
-	PeriodTo   string   `json:"period_to" example:"2025-09-30"`
-	Stack      []string `json:"stack" example:"Python,Pytest"`
-}
-
-type updateHistoryRequest struct {
-	Company    *string  `json:"company,omitempty"`
-	Position   *string  `json:"position,omitempty"`
-	PeriodFrom *string  `json:"period_from,omitempty"`
-	PeriodTo   *string  `json:"period_to,omitempty"`
-	Stack      []string `json:"stack,omitempty"`
-}
 
 // @Summary История работы сотрудника
 // @Tags    CRUD-History
 // @Produce json
 // @Param   employee_id path string true "Идентификатор сотрудника"
-// @Param   limit  query int false "Лимит"   default(50)
-// @Param   offset query int false "Смещение" default(0)
-// @Success 200 {object} listResponse
+// @Success 200 {object} dto.EmploymentHistory
+// @Failure 400 {object} errorResponse "Отсутствует employee_id"
+// @Failure 404 {object} errorResponse "Сотрудник не найден"
 // @Failure 500 {object} errorResponse
 // @Router  /history/{employee_id} [get]
 func (s *Service) listHistoryByEmployee(ctx *fasthttp.RequestCtx) {
 	employeeID := ctx.UserValue("employee_id").(string)
-	limit, offset := parseLO(ctx)
-	rows, err := s.history.ListByEmployee(ctx, employeeID, limit, offset)
-	if err != nil {
-		serverError(ctx, err)
+	if strings.TrimSpace(employeeID) == "" {
+		writeError(ctx, fasthttp.StatusBadRequest, ErrEmployeeIDRequired)
 		return
 	}
-	writeJSON(ctx, fasthttp.StatusOK, listResponse{Items: rows, Limit: limit, Offset: offset})
+
+	rows, err := s.history.ListByEmployee(ctx, employeeID)
+
+	if err != nil {
+		if errors.Is(err, dto.ErrNotFound) {
+			writeError(ctx, fasthttp.StatusNotFound, ErrHistoryNotFound)
+			return
+		}
+
+		writeError(ctx, fasthttp.StatusInternalServerError, fmt.Errorf("history.ListByEmployee: %w", err))
+		return
+	}
+
+	writeJSON(ctx, fasthttp.StatusOK, rows)
 }
 
 // @Summary Добавить запись в историю работы
 // @Tags    CRUD-History
 // @Accept  json
 // @Produce json
-// @Param   request body createHistoryRequest true "История"
-// @Success 200 {object} okResponse
-// @Failure 400 {object} errorResponse
-// @Failure 500 {object} errorResponse
+// @Param   request body dto.EmploymentHistory true "История"
+// @Failure 400 {object} errorResponse "Отсутствует employee_id"
+// @Failure 500 {object} errorResponse "Внутренняя ошибка"
 // @Router  /history [post]
 func (s *Service) createHistory(ctx *fasthttp.RequestCtx) {
-	var req createHistoryRequest
-	if err := json.Unmarshal(ctx.PostBody(), &req); err != nil {
-		badRequest(ctx, "invalid_json", "Некорректный JSON")
+	var req dto.EmploymentHistory
+
+	err := json.Unmarshal(ctx.PostBody(), &req)
+	if err != nil {
+		writeError(ctx, fasthttp.StatusBadRequest, fmt.Errorf("json.Unmarshal: %w", err))
 		return
 	}
-	if strings.TrimSpace(req.EmployeeID) == "" || strings.TrimSpace(req.Company) == "" {
-		badRequest(ctx, "missing_required_field", "Отсутствует employee_id или company")
-		return
-	}
-	if req.PeriodTo < req.PeriodFrom {
-		badRequest(ctx, "invalid_period", "Дата окончания раньше даты начала")
+
+	if strings.TrimSpace(req.EmployeeID) == "" {
+		writeError(ctx, fasthttp.StatusBadRequest, ErrEmployeeIDRequired)
 		return
 	}
 
@@ -80,9 +73,10 @@ func (s *Service) createHistory(ctx *fasthttp.RequestCtx) {
 		Stack:      req.Stack,
 	}
 	if err := s.history.Insert(ctx, row); err != nil {
-		serverError(ctx, err)
+		writeError(ctx, fasthttp.StatusInternalServerError, fmt.Errorf("historyRepository.Create: %w", err))
 		return
 	}
+
 	ok(ctx, "История добавлена")
 }
 
@@ -90,72 +84,43 @@ func (s *Service) createHistory(ctx *fasthttp.RequestCtx) {
 // @Tags    CRUD-History
 // @Accept  json
 // @Produce json
-// @Param   id path int true "ID записи истории"
-// @Param   request body updateHistoryRequest true "Изменяемые поля"
+// @Param   request body dto.EmploymentHistory true "Изменяемые поля"
 // @Success 200 {object} okResponse
-// @Failure 400 {object} errorResponse
-// @Failure 404 {object} errorResponse
+// @Failure 400 {object} errorResponse "Отсутствует id"
+// @Failure 404 {object} errorResponse "Запись не найдена"
 // @Failure 500 {object} errorResponse
 // @Router  /history/{id} [put]
 func (s *Service) updateHistory(ctx *fasthttp.RequestCtx) {
-	idStr := ctx.UserValue("id").(string)
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil || id <= 0 {
-		badRequest(ctx, "invalid_id", "Некорректный id записи")
-		return
-	}
+	var req dto.EmploymentHistory
 
-	exists, err := s.history.GetByID(ctx, id)
+	err := json.Unmarshal(ctx.PostBody(), &req)
 	if err != nil {
-		serverError(ctx, err)
-		return
-	}
-	if exists == nil {
-		notFound(ctx, "history_not_found", "Запись истории не найдена")
+		writeError(ctx, fasthttp.StatusBadRequest, fmt.Errorf("json.Unmarshal: %w", err))
 		return
 	}
 
-	var req updateHistoryRequest
-	if err := json.Unmarshal(ctx.PostBody(), &req); err != nil {
-		badRequest(ctx, "invalid_json", "Некорректный JSON")
+	idStr := ctx.UserValue("id").(string)
+	if idStr == "" {
+		writeError(ctx, fasthttp.StatusBadRequest, ErrHistoryIDRequired)
+	}
+
+	req.ID, err = strconv.ParseInt(idStr, 10, 64)
+	if err != nil || req.ID <= 0 {
+		writeError(ctx, fasthttp.StatusBadRequest, errors.New("некорректный id"))
 		return
 	}
 
-	row := dto.EmploymentHistory{
-		ID:         id,
-		EmployeeID: exists.EmployeeID,
-		Company:    exists.Company,
-		Position:   exists.Position,
-		PeriodFrom: exists.PeriodFrom,
-		PeriodTo:   exists.PeriodTo,
-		Stack:      exists.Stack,
-	}
+	if err := s.history.Update(ctx, req); err != nil {
+		if errors.Is(err, dto.ErrNotFound) {
+			writeError(ctx, fasthttp.StatusNotFound, ErrHistoryNotFound)
 
-	if req.Company != nil {
-		row.Company = *req.Company
-	}
-	if req.Position != nil {
-		row.Position = req.Position
-	}
-	if req.PeriodFrom != nil {
-		row.PeriodFrom = *req.PeriodFrom
-	}
-	if req.PeriodTo != nil {
-		row.PeriodTo = *req.PeriodTo
-	}
-	if req.Stack != nil && len(req.Stack) > 0 {
-		row.Stack = req.Stack
-	}
+			return
+		}
 
-	if row.PeriodTo < row.PeriodFrom {
-		badRequest(ctx, "invalid_period", "Дата окончания раньше даты начала")
+		writeError(ctx, fasthttp.StatusInternalServerError, fmt.Errorf("historyRepository.Update: %w", err))
 		return
 	}
 
-	if err := s.history.Update(ctx, row); err != nil {
-		serverError(ctx, err)
-		return
-	}
 	ok(ctx, "Запись истории обновлена")
 }
 
@@ -163,31 +128,32 @@ func (s *Service) updateHistory(ctx *fasthttp.RequestCtx) {
 // @Tags    CRUD-History
 // @Produce json
 // @Param   id path int true "ID записи истории"
-// @Success 200 {object} okResponse
-// @Failure 404 {object} errorResponse
-// @Failure 500 {object} errorResponse
+// @Failure 400 {object} errorResponse "Отсутствует id"
+// @Failure 404 {object} errorResponse "История не найдена"
+// @Failure 500 {object} errorResponse "Внутренняя ошибка"
 // @Router  /history/{id} [delete]
 func (s *Service) deleteHistory(ctx *fasthttp.RequestCtx) {
 	idStr := ctx.UserValue("id").(string)
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil || id <= 0 {
-		badRequest(ctx, "invalid_id", "Некорректный id записи")
-		return
+	if idStr == "" {
+		writeError(ctx, fasthttp.StatusBadRequest, ErrHistoryIDRequired)
 	}
 
-	exists, err := s.history.GetByID(ctx, id)
-	if err != nil {
-		serverError(ctx, err)
-		return
-	}
-	if exists == nil {
-		notFound(ctx, "history_not_found", "Запись истории не найдена")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil || id <= 0 {
+		writeError(ctx, fasthttp.StatusBadRequest, errors.New("некорректный id"))
 		return
 	}
 
 	if err := s.history.Delete(ctx, id); err != nil {
-		serverError(ctx, err)
+		if errors.Is(err, dto.ErrNotFound) {
+			writeError(ctx, fasthttp.StatusNotFound, ErrHistoryNotFound)
+
+			return
+		}
+
+		writeError(ctx, fasthttp.StatusInternalServerError, fmt.Errorf("historyRepository.Delete: %w", err))
 		return
 	}
+
 	ok(ctx, "Запись истории удалена")
 }

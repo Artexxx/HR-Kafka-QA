@@ -6,11 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/Artexxx/HR-Kafka-QA/internal/dto"
-
 	"github.com/IBM/sarama"
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 )
 

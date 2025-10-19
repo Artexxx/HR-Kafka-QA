@@ -44,10 +44,8 @@ swag: swagger-gen
 	fi
 	@echo "Adding additional servers to client OpenAPI..."
 	@sed -i '/^servers:/a \
-  - url: http://127.0.0.1:8080\n\
-    description: Local access\n\
-  - url: https://user-app.brands.dev.itemcloud.ru\n\
-    description: Dev Swagger UI' $(GEN_DIR)/user_openapi.yaml
+  - url: $(SERVER_IP)\n\
+    description: Swagger UI' $(GEN_DIR)/user_openapi.yaml
 
 
 .PHONY: swagger-gen

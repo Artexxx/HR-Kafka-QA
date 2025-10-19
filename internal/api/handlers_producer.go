@@ -2,40 +2,44 @@ package api
 
 import (
 	"encoding/json"
-	"strconv"
+	"fmt"
+	"github.com/google/uuid"
 	"strings"
 
 	"github.com/Artexxx/HR-Kafka-QA/internal/dto"
 	"github.com/valyala/fasthttp"
 )
 
+// personalProduceRequest — payload для топика hr.personal
 type personalProduceRequest struct {
-	MessageID  string  `json:"message_id"`
-	EmployeeID string  `json:"employee_id"`
-	FirstName  *string `json:"first_name"`
-	LastName   *string `json:"last_name"`
-	BirthDate  *string `json:"birth_date"`
-	Email      *string `json:"email"`
-	Phone      *string `json:"phone"`
+	MessageID  uuid.UUID `json:"message_id" example:"6b6f9c38-3e2a-4b3d-9a9a-9f1c0f8b2a10"` // Идентификатор события (UUIDv4)
+	EmployeeID string    `json:"employee_id" example:"e-1024"`                              // Идентификатор сотрудника
+	FirstName  *string   `json:"first_name,omitempty" example:"Анна"`                       // Имя
+	LastName   *string   `json:"last_name,omitempty" example:"Иванова"`                     // Фамилия
+	BirthDate  *string   `json:"birth_date,omitempty" example:"1994-06-12"`                 // Дата рождения (YYYY-MM-DD)
+	Email      *string   `json:"email,omitempty" example:"anna@mail.ru"`                    // Email
+	Phone      *string   `json:"phone,omitempty" example:"+7 916 123-45-67"`                // Телефон
 }
 
+// positionProduceRequest — payload для топика hr.positions
 type positionProduceRequest struct {
-	MessageID     string  `json:"message_id"`
-	EmployeeID    string  `json:"employee_id"`
-	Title         *string `json:"title"`
-	Department    *string `json:"department"`
-	Grade         *string `json:"grade"`
-	EffectiveFrom *string `json:"effective_from"`
+	MessageID     uuid.UUID `json:"message_id" example:"a1d2f3c4-5678-4abc-9def-0123456789ab"` // Идентификатор события (UUIDv4)
+	EmployeeID    string    `json:"employee_id" example:"e-1024"`                              // Идентификатор сотрудника
+	Title         *string   `json:"title,omitempty" example:"Инженер по тестированию"`         // Должность
+	Department    *string   `json:"department,omitempty" example:"Отдел качества"`             // Подразделение
+	Grade         *string   `json:"grade,omitempty" example:"Middle"`                          // Грейд
+	EffectiveFrom *string   `json:"effective_from,omitempty" example:"2025-10-01"`             // Дата вступления в силу (YYYY-MM-DD)
 }
 
+// historyProduceRequest — payload для топика hr.history
 type historyProduceRequest struct {
-	MessageID  string   `json:"message_id"`
-	EmployeeID string   `json:"employee_id"`
-	Company    string   `json:"company"`
-	Position   *string  `json:"position"`
-	PeriodFrom string   `json:"period_from"`
-	PeriodTo   string   `json:"period_to"`
-	Stack      []string `json:"stack"`
+	MessageID  uuid.UUID `json:"message_id" example:"0f2eb2b1-6a25-4d2a-8a7e-2c642e00e5ed"` // Идентификатор события (UUIDv4)
+	EmployeeID string    `json:"employee_id" example:"e-1024"`                              // Идентификатор сотрудника
+	Company    string    `json:"company" example:"ООО Ромашка"`                             // Компания
+	Position   *string   `json:"position,omitempty"  example:"Инженер QA"`                  // Должность (опционально)
+	PeriodFrom string    `json:"period_from" example:"2022-07-01"`                          // Начало периода (YYYY-MM-DD)
+	PeriodTo   string    `json:"period_to" example:"2025-09-30"`                            // Окончание периода (YYYY-MM-DD)
+	Stack      []string  `json:"stack" example:"Python,Pytest,PostgreSQL"`                  // Стек (список строк)
 }
 
 // @Summary Публикация события в hr.personal
@@ -44,43 +48,42 @@ type historyProduceRequest struct {
 // @Produce json
 // @Param   request body personalProduceRequest true "payload"
 // @Success 200 {object} okResponse
-// @Failure 400 {object} errorResponse
-// @Failure 501 {object} errorResponse
-// @Failure 500 {object} errorResponse
+// @Failure 400 {object} errorResponse "Отсутствует message_id/employee_id"
+// @Failure 500 {object} errorResponse "Внутренняя ошибка"
 // @Router  /producer/personal [post]
 func (s *Service) producerPersonal(ctx *fasthttp.RequestCtx) {
-	if s.producer == nil {
-		notImplemented(ctx, "producer_not_configured", "Продюсер не настроен. Обратитесь к администратору стенда.")
-		return
-	}
-
 	var req personalProduceRequest
-	if err := json.Unmarshal(ctx.PostBody(), &req); err != nil {
-		badRequest(ctx, "invalid_json", "Некорректный JSON")
-		return
-	}
-	if strings.TrimSpace(req.MessageID) == "" || strings.TrimSpace(req.EmployeeID) == "" {
-		badRequest(ctx, "missing_required_field", "Отсутствует message_id или employee_id")
+
+	err := json.Unmarshal(ctx.PostBody(), &req)
+	if err != nil {
+		writeError(ctx, fasthttp.StatusBadRequest, fmt.Errorf("json.Unmarshal: %w", err))
 		return
 	}
 
-	prof := dto.EmployeeProfile{
-		EmployeeID:    req.EmployeeID,
-		FirstName:     req.FirstName,
-		LastName:      req.LastName,
-		BirthDate:     req.BirthDate,
-		Email:         req.Email,
-		Phone:         req.Phone,
-		Title:         nil, // не используется в personal
-		Department:    nil,
-		Grade:         nil,
-		EffectiveFrom: nil,
-	}
-
-	if err := s.producer.ProducePersonal(ctx, req.MessageID, prof); err != nil {
-		serverError(ctx, err)
+	if req.MessageID != uuid.Nil {
+		writeError(ctx, fasthttp.StatusBadRequest, ErrMessageIDRequired)
 		return
 	}
+
+	if strings.TrimSpace(req.EmployeeID) == "" {
+		writeError(ctx, fasthttp.StatusBadRequest, ErrEmployeeIDRequired)
+		return
+	}
+
+	employee := dto.EmployeeProfile{
+		EmployeeID: req.EmployeeID,
+		FirstName:  req.FirstName,
+		LastName:   req.LastName,
+		BirthDate:  req.BirthDate,
+		Email:      req.Email,
+		Phone:      req.Phone,
+	}
+
+	if err := s.producer.ProducePersonal(ctx, req.MessageID, employee); err != nil {
+		writeError(ctx, fasthttp.StatusInternalServerError, fmt.Errorf("producer.ProducePersonal: %w", err))
+		return
+	}
+
 	ok(ctx, "Событие отправлено в hr.personal")
 }
 
@@ -90,27 +93,29 @@ func (s *Service) producerPersonal(ctx *fasthttp.RequestCtx) {
 // @Produce json
 // @Param   request body positionProduceRequest true "payload"
 // @Success 200 {object} okResponse
-// @Failure 400 {object} errorResponse
-// @Failure 501 {object} errorResponse
-// @Failure 500 {object} errorResponse
+// @Failure 400 {object} errorResponse "Отсутствует message_id/employee_id"
+// @Failure 500 {object} errorResponse "Внутренняя ошибка"
 // @Router  /producer/position [post]
 func (s *Service) producerPosition(ctx *fasthttp.RequestCtx) {
-	if s.producer == nil {
-		notImplemented(ctx, "producer_not_configured", "Продюсер не настроен. Обратитесь к администратору стенда.")
-		return
-	}
-
 	var req positionProduceRequest
-	if err := json.Unmarshal(ctx.PostBody(), &req); err != nil {
-		badRequest(ctx, "invalid_json", "Некорректный JSON")
-		return
-	}
-	if strings.TrimSpace(req.MessageID) == "" || strings.TrimSpace(req.EmployeeID) == "" {
-		badRequest(ctx, "missing_required_field", "Отсутствует message_id или employee_id")
+
+	err := json.Unmarshal(ctx.PostBody(), &req)
+	if err != nil {
+		writeError(ctx, fasthttp.StatusBadRequest, fmt.Errorf("json.Unmarshal: %w", err))
 		return
 	}
 
-	prof := dto.EmployeeProfile{
+	if req.MessageID != uuid.Nil {
+		writeError(ctx, fasthttp.StatusBadRequest, ErrMessageIDRequired)
+		return
+	}
+
+	if strings.TrimSpace(req.EmployeeID) == "" {
+		writeError(ctx, fasthttp.StatusBadRequest, ErrEmployeeIDRequired)
+		return
+	}
+
+	employee := dto.EmployeeProfile{
 		EmployeeID:    req.EmployeeID,
 		Title:         req.Title,
 		Department:    req.Department,
@@ -118,10 +123,11 @@ func (s *Service) producerPosition(ctx *fasthttp.RequestCtx) {
 		EffectiveFrom: req.EffectiveFrom,
 	}
 
-	if err := s.producer.ProducePosition(ctx, req.MessageID, prof); err != nil {
-		serverError(ctx, err)
+	if err := s.producer.ProducePosition(ctx, req.MessageID, employee); err != nil {
+		writeError(ctx, fasthttp.StatusInternalServerError, fmt.Errorf("producer.ProducePosition: %w", err))
 		return
 	}
+
 	ok(ctx, "Событие отправлено в hr.positions")
 }
 
@@ -130,28 +136,25 @@ func (s *Service) producerPosition(ctx *fasthttp.RequestCtx) {
 // @Accept  json
 // @Produce json
 // @Param   request body historyProduceRequest true "payload"
-// @Success 200 {object} okResponse
-// @Failure 400 {object} errorResponse
-// @Failure 501 {object} errorResponse
-// @Failure 500 {object} errorResponse
+// @Failure 400 {object} errorResponse "Отсутствует message_id/employee_id"
+// @Failure 500 {object} errorResponse "Внутренняя ошибка"
 // @Router  /producer/history [post]
 func (s *Service) producerHistory(ctx *fasthttp.RequestCtx) {
-	if s.producer == nil {
-		notImplemented(ctx, "producer_not_configured", "Продюсер не настроен. Обратитесь к администратору стенда.")
+	var req historyProduceRequest
+
+	err := json.Unmarshal(ctx.PostBody(), &req)
+	if err != nil {
+		writeError(ctx, fasthttp.StatusBadRequest, fmt.Errorf("json.Unmarshal: %w", err))
 		return
 	}
 
-	var req historyProduceRequest
-	if err := json.Unmarshal(ctx.PostBody(), &req); err != nil {
-		badRequest(ctx, "invalid_json", "Некорректный JSON")
+	if req.MessageID != uuid.Nil {
+		writeError(ctx, fasthttp.StatusBadRequest, ErrMessageIDRequired)
 		return
 	}
-	if strings.TrimSpace(req.MessageID) == "" || strings.TrimSpace(req.EmployeeID) == "" {
-		badRequest(ctx, "missing_required_field", "Отсутствует message_id или employee_id")
-		return
-	}
-	if req.PeriodTo < req.PeriodFrom {
-		badRequest(ctx, "invalid_period", "Дата окончания раньше даты начала")
+
+	if strings.TrimSpace(req.EmployeeID) == "" {
+		writeError(ctx, fasthttp.StatusBadRequest, ErrEmployeeIDRequired)
 		return
 	}
 
@@ -165,62 +168,41 @@ func (s *Service) producerHistory(ctx *fasthttp.RequestCtx) {
 	}
 
 	if err := s.producer.ProduceHistory(ctx, req.MessageID, h); err != nil {
-		serverError(ctx, err)
+		writeError(ctx, fasthttp.StatusInternalServerError, fmt.Errorf("producer.ProducePosition: %w", err))
 		return
 	}
+
 	ok(ctx, "Событие отправлено в hr.history")
 }
 
 // @Summary Сырые события (эмуляция kafka_events)
 // @Tags    Producer
 // @Produce json
-// @Param   limit  query int false "Лимит"   default(50)
-// @Param   offset query int false "Смещение" default(0)
-// @Success 200 {object} listResponse
-// @Failure 500 {object} errorResponse
+// @Success 200 {array} dto.KafkaEvent
+// @Failure 500 {string} string "Внутренняя ошибка"
 // @Router  /events [get]
 func (s *Service) listEvents(ctx *fasthttp.RequestCtx) {
-	limit, offset := parseLO(ctx)
-	rows, err := s.events.ListEvents(ctx, limit, offset)
+	rows, err := s.events.ListEvents(ctx)
 	if err != nil {
-		serverError(ctx, err)
+		writeError(ctx, fasthttp.StatusInternalServerError, fmt.Errorf("events.ListEvents: %w", err))
 		return
 	}
 
-	writeJSON(ctx, fasthttp.StatusOK, listResponse{Items: rows, Limit: limit, Offset: offset})
+	writeJSON(ctx, fasthttp.StatusOK, rows)
 }
 
 // @Summary Сообщения DLQ
 // @Tags    Producer
 // @Produce json
-// @Param   limit  query int false "Лимит"   default(50)
-// @Param   offset query int false "Смещение" default(0)
-// @Success 200 {object} listResponse
-// @Failure 500 {object} errorResponse
+// @Success 200 {array} dto.KafkaDLQ
+// @Failure 500 {string} string "Внутренняя ошибка"
 // @Router  /dlq [get]
 func (s *Service) listDLQ(ctx *fasthttp.RequestCtx) {
-	limit, offset := parseLO(ctx)
-	rows, err := s.events.ListDLQ(ctx, limit, offset)
+	rows, err := s.events.ListDLQ(ctx)
 	if err != nil {
-		serverError(ctx, err)
+		writeError(ctx, fasthttp.StatusInternalServerError, fmt.Errorf("events.ListDLQ: %w", err))
 		return
 	}
-	writeJSON(ctx, fasthttp.StatusOK, listResponse{Items: rows, Limit: limit, Offset: offset})
-}
 
-func parseLO(ctx *fasthttp.RequestCtx) (int, int) {
-	q := ctx.URI().QueryArgs()
-	limit := 50
-	offset := 0
-
-	if v := q.GetUfloatOrZero("limit"); v > 0 && v <= 500 {
-		limit = int(v)
-	}
-	if s := string(q.Peek("offset")); s != "" {
-		if x, err := strconv.Atoi(s); err == nil && x >= 0 {
-			offset = x
-		}
-	}
-
-	return limit, offset
+	writeJSON(ctx, fasthttp.StatusOK, rows)
 }

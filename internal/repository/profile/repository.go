@@ -2,6 +2,8 @@ package profile
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -25,59 +27,94 @@ func NewRepository(pool PgxPoolIface) *Repository {
 }
 
 func (r *Repository) Create(ctx context.Context, p dto.EmployeeProfile) error {
-	q := `
-INSERT INTO employee_profile
-	(employee_id, first_name, last_name, birth_date, email, phone, title, department, grade, effective_from, updated_at)
-VALUES
-	($1, $2, $3, NULLIF($4, '')::date, $5, $6, $7, $8, $9, NULLIF($10, '')::date, NOW());
+	query := `
+insert into employee_profile
+  (employee_id, first_name, last_name, birth_date, email, phone, title, department, grade, effective_from, updated_at)
+values
+  (@employee_id, @first_name, @last_name, nullif(@birth_date, '')::date, @email, @phone, @title, @department, @grade, nullif(@effective_from, '')::date, now());
 `
-	_, err := r.pool.Exec(ctx, q, p.EmployeeID, p.FirstName, p.LastName, strptr(p.BirthDate), p.Email, p.Phone, p.Title, p.Department, p.Grade, strptr(p.EffectiveFrom))
+	args := pgx.NamedArgs{
+		"employee_id":    p.EmployeeID,
+		"first_name":     p.FirstName,
+		"last_name":      p.LastName,
+		"birth_date":     strptr(p.BirthDate),
+		"email":          p.Email,
+		"phone":          p.Phone,
+		"title":          p.Title,
+		"department":     p.Department,
+		"grade":          p.Grade,
+		"effective_from": strptr(p.EffectiveFrom),
+	}
+
+	_, err := r.pool.Exec(ctx, query, args)
 	if err != nil {
-		return err
+		var pgerr *pgconn.PgError
+		if errors.As(err, &pgerr) && pgerr.Code == "23505" {
+			return dto.ErrAlreadyExists
+		}
+
+		return fmt.Errorf("pool.Exec: %w", err)
 	}
 
 	return nil
 }
 
 func (r *Repository) Update(ctx context.Context, p dto.EmployeeProfile) error {
-	q := `
-UPDATE employee_profile SET
-	first_name = COALESCE($2, first_name),
-	last_name = COALESCE($3, last_name),
-	birth_date = COALESCE(NULLIF($4,'')::date, birth_date),
-	email = COALESCE($5, email),
-	phone = COALESCE($6, phone),
-	title = COALESCE($7, title),
-	department = COALESCE($8, department),
-	grade = COALESCE($9, grade),
-	effective_from = COALESCE(NULLIF($10,'')::date, effective_from),
-	updated_at = NOW()
-WHERE employee_id = $1;
+	query := `
+update employee_profile set
+  first_name     = @first_name,
+  last_name      = @last_name,
+  birth_date     = nullif(@birth_date,'')::date,
+  email          = @email,
+  phone          = @phone,
+  title          = @title,
+  department     = @department,
+  grade          = @grade,
+  effective_from = nullif(@effective_from,'')::date,
+  updated_at     = now()
+where employee_id = @employee_id;
 `
-	_, err := r.pool.Exec(ctx, q,
-		p.EmployeeID, p.FirstName, p.LastName, strptr(p.BirthDate),
-		p.Email, p.Phone, p.Title, p.Department, p.Grade, strptr(p.EffectiveFrom),
-	)
+	args := pgx.NamedArgs{
+		"employee_id":    p.EmployeeID,
+		"first_name":     p.FirstName,
+		"last_name":      p.LastName,
+		"birth_date":     strptr(p.BirthDate),
+		"email":          p.Email,
+		"phone":          p.Phone,
+		"title":          p.Title,
+		"department":     p.Department,
+		"grade":          p.Grade,
+		"effective_from": strptr(p.EffectiveFrom),
+	}
+
+	tag, err := r.pool.Exec(ctx, query, args)
 	if err != nil {
-		return err
+		return fmt.Errorf("pool.Exec: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return dto.ErrNotFound
 	}
 
 	return nil
 }
 
 func (r *Repository) Delete(ctx context.Context, employeeID string) error {
-	q := `DELETE FROM employee_profile WHERE employee_id = $1`
-	_, err := r.pool.Exec(ctx, q, employeeID)
+	query := `delete from employee_profile where employee_id = $1`
+
+	tag, err := r.pool.Exec(ctx, query, employeeID)
 	if err != nil {
-		return err
+		return fmt.Errorf("pool.Exec: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return dto.ErrNotFound
 	}
 
 	return nil
 }
 
 func (r *Repository) GetProfile(ctx context.Context, employeeID string) (*dto.EmployeeProfile, error) {
-	q := `
-SELECT employee_id,
+	query := `
+select employee_id,
 	   first_name,
 	   last_name,
 	   to_char(birth_date,'YYYY-MM-DD'),
@@ -88,13 +125,16 @@ SELECT employee_id,
 	   grade,
 	   to_char(effective_from,'YYYY-MM-DD'),
 	   to_char(updated_at, 'YYYY-MM-DD"T"HH24:MI:SSOF')
-FROM employee_profile
-WHERE employee_id = $1;
+from employee_profile
+where employee_id = $1;
 `
-	row := r.pool.QueryRow(ctx, q, employeeID)
+	row := r.pool.QueryRow(ctx, query, employeeID)
 
-	var out dto.EmployeeProfile
-	var birthDate, effectiveFrom *string
+	var (
+		out           dto.EmployeeProfile
+		birthDate     *string
+		effectiveFrom *string
+	)
 
 	err := row.Scan(
 		&out.EmployeeID,
@@ -110,7 +150,11 @@ WHERE employee_id = $1;
 		&out.UpdatedAt,
 	)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, dto.ErrNotFound
+		}
+
+		return nil, fmt.Errorf("row.Scan: %w", err)
 	}
 
 	out.BirthDate = birthDate
@@ -119,102 +163,112 @@ WHERE employee_id = $1;
 	return &out, nil
 }
 
-func (r *Repository) ListProfiles(ctx context.Context, limit, offset int) ([]dto.EmployeeProfile, error) {
-	if limit <= 0 {
-		limit = 100
-	}
-	if offset < 0 {
-		offset = 0
-	}
-
-	q := `
-SELECT employee_id,
-	   first_name,
-	   last_name,
-	   to_char(birth_date,'YYYY-MM-DD'),
-	   email,
-	   phone,
-	   title,
-	   department,
-	   grade,
-	   to_char(effective_from,'YYYY-MM-DD'),
-	   to_char(updated_at, 'YYYY-MM-DD"T"HH24:MI:SSOF')
-FROM employee_profile
-ORDER BY updated_at DESC, employee_id
-LIMIT $1 OFFSET $2`
-
-	rows, err := r.pool.Query(ctx, q, limit, offset)
+func (r *Repository) ListProfiles(ctx context.Context) ([]dto.EmployeeProfile, error) {
+	query := `
+select employee_id,
+       first_name,
+       last_name,
+       to_char(birth_date,'YYYY-MM-DD'),
+       email,
+       phone,
+       title,
+       department,
+       grade,
+       to_char(effective_from,'YYYY-MM-DD'),
+       to_char(updated_at, 'YYYY-MM-DD"T"HH24:MI:SSOF')
+from employee_profile
+order by updated_at desc, employee_id
+`
+	rows, err := r.pool.Query(ctx, query)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("pool.Query: %w", err)
 	}
 	defer rows.Close()
 
 	var out []dto.EmployeeProfile
 	for rows.Next() {
-		var it dto.EmployeeProfile
-		var birthDate, effectiveFrom *string
+		var (
+			profile                  dto.EmployeeProfile
+			birthDate, effectiveFrom *string
+		)
+
 		err = rows.Scan(
-			&it.EmployeeID,
-			&it.FirstName,
-			&it.LastName,
+			&profile.EmployeeID,
+			&profile.FirstName,
+			&profile.LastName,
 			&birthDate,
-			&it.Email,
-			&it.Phone,
-			&it.Title,
-			&it.Department,
-			&it.Grade,
+			&profile.Email,
+			&profile.Phone,
+			&profile.Title,
+			&profile.Department,
+			&profile.Grade,
 			&effectiveFrom,
-			&it.UpdatedAt,
+			&profile.UpdatedAt,
 		)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("rows.Scan: %w", err)
 		}
 
-		it.BirthDate = birthDate
-		it.EffectiveFrom = effectiveFrom
-		out = append(out, it)
+		profile.BirthDate = birthDate
+		profile.EffectiveFrom = effectiveFrom
+		out = append(out, profile)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows.Err: %w", err)
+	}
+
+	return out, nil
 }
 
 func (r *Repository) UpsertPersonal(ctx context.Context, p dto.EmployeeProfile) error {
-	q := `
-INSERT INTO employee_profile (employee_id, first_name, last_name, birth_date, email, phone, updated_at)
-VALUES ($1, $2, $3, NULLIF($4,'')::date, $5, $6, NOW())
-ON CONFLICT (employee_id) DO UPDATE SET
-	first_name = COALESCE(EXCLUDED.first_name, employee_profile.first_name),
-	last_name = COALESCE(EXCLUDED.last_name, employee_profile.last_name),
-	birth_date = COALESCE(EXCLUDED.birth_date, employee_profile.birth_date),
-	email = COALESCE(EXCLUDED.email, employee_profile.email),
-	phone = COALESCE(EXCLUDED.phone, employee_profile.phone),
-	updated_at = NOW();
+	query := `
+insert into employee_profile (employee_id, first_name, last_name, birth_date, email, phone, updated_at)
+values (@employee_id, @first_name, @last_name, nullif(@birth_date,'')::date, @email, @phone, now())
+on conflict (employee_id) do update set
+  first_name = excluded.first_name,
+  last_name  = excluded.last_name,
+  birth_date = excluded.birth_date,
+  email      = excluded.email,
+  phone      = excluded.phone,
+  updated_at = now();
 `
-	_, err := r.pool.Exec(ctx, q,
-		p.EmployeeID, p.FirstName, p.LastName, strptr(p.BirthDate), p.Email, p.Phone,
-	)
-	if err != nil {
-		return err
+	args := pgx.NamedArgs{
+		"employee_id": p.EmployeeID,
+		"first_name":  p.FirstName,
+		"last_name":   p.LastName,
+		"birth_date":  strptr(p.BirthDate),
+		"email":       p.Email,
+		"phone":       p.Phone,
+	}
+
+	if _, err := r.pool.Exec(ctx, query, args); err != nil {
+		return fmt.Errorf("pool.Exec: %w", err)
 	}
 
 	return nil
 }
 
 func (r *Repository) UpsertPosition(ctx context.Context, p dto.EmployeeProfile) error {
-	q := `
-INSERT INTO employee_profile (employee_id, title, department, grade, effective_from, updated_at)
-VALUES ($1, $2, $3, $4, NULLIF($5,'')::date, NOW())
-ON CONFLICT (employee_id) DO UPDATE SET
-	title = COALESCE(EXCLUDED.title, employee_profile.title),
-	department = COALESCE(EXCLUDED.department, employee_profile.department),
-	grade = COALESCE(EXCLUDED.grade, employee_profile.grade),
-	effective_from = COALESCE(EXCLUDED.effective_from, employee_profile.effective_from),
-	updated_at = NOW();
+	query := `
+insert into employee_profile (employee_id, title, department, grade, effective_from, updated_at)
+values (@employee_id, @title, @department, @grade, nullif(@effective_from,'')::date, now())
+on conflict (employee_id) do update set
+  title          = excluded.title,
+  department     = excluded.department,
+  grade          = excluded.grade,
+  effective_from = excluded.effective_from,
+  updated_at     = now();
 `
-	_, err := r.pool.Exec(ctx, q,
-		p.EmployeeID, p.Title, p.Department, p.Grade, strptr(p.EffectiveFrom),
-	)
-	if err != nil {
-		return err
+	args := pgx.NamedArgs{
+		"employee_id":    p.EmployeeID,
+		"title":          p.Title,
+		"department":     p.Department,
+		"grade":          p.Grade,
+		"effective_from": strptr(p.EffectiveFrom),
+	}
+
+	if _, err := r.pool.Exec(ctx, query, args); err != nil {
+		return fmt.Errorf("pool.Exec: %w", err)
 	}
 
 	return nil

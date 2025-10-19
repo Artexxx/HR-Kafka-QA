@@ -876,7 +876,3 @@ MIT. Делайте с проектом что хотите — форкайте
 INSERT INTO kafka_dlq (topic, msg_key, payload, error, received_at)
 VALUES ('hr.history', 'e-1024', '{"..."}'::jsonb, 'invalid_period', now());
 ```
-
----
-
-Если что-то упустил — скажи, подгоню README под ваш текущий код/пайплайны.

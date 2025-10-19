@@ -83,6 +83,7 @@ services:
       - ./docs:/usr/share/nginx/html/docs
 
   kafka0:
+    <<: *services_defaults
     image: apache/kafka:latest
     hostname: kafka0
     container_name: kafka0
@@ -110,7 +111,10 @@ services:
       KAFKA_LISTENERS: "PLAINTEXT://kafka0:29092,CONTROLLER://kafka0:29093,PLAINTEXT_HOST://0.0.0.0:9092"
       KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
       KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_DELETE_TOPIC_ENABLE: "false"
   kafka-ui:
+    <<: *services_defaults
     container_name: kafka-ui
     image: provectuslabs/kafka-ui:latest
     ports:
@@ -129,11 +133,12 @@ services:
 
       # uncomment this if you want to be able to change the configuration of the
       # Kafka cluster from the Kafka UI
-      DYNAMIC_CONFIG_ENABLED: "true"
+      DYNAMIC_CONFIG_ENABLED: "false"
     volumes:
       - ./kafka-ui-config.yml:/etc/kafkaui/dynamic_config.yaml
 
   init-kafka:
+    <<: *services_defaults
     image: confluentinc/cp-kafka:6.1.1
     depends_on:
       - kafka0

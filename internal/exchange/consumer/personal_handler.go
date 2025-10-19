@@ -2,7 +2,6 @@ package consumer
 
 import (
 	"fmt"
-
 	"github.com/Artexxx/HR-Kafka-QA/internal/dto"
 
 	"github.com/IBM/sarama"
@@ -33,20 +32,25 @@ func NewPersonalRunner(
 func (h *handler) processPersonal(sess sarama.ConsumerGroupSession, msg *sarama.ConsumerMessage, event Envelope[PersonalPayload]) bool {
 	ctx := sess.Context()
 
-	msgID, err := uuid.Parse(event.MessageID)
-	if err != nil || event.EmployeeID == "" {
+	if event.MessageID != uuid.Nil {
+		h.toDLQ(ctx, msg, "missing required field message_id")
+		return h.commitOnDLQ
+	}
+
+	if event.EmployeeID == "" {
 		h.toDLQ(ctx, msg, "missing required field employee_id")
 		return h.commitOnDLQ
 	}
 
-	exists, err := h.events.ExistsMessage(ctx, msgID)
+	exists, err := h.events.ExistsMessage(ctx, event.MessageID)
 	if err != nil {
-		h.toDLQ(ctx, msg, fmt.Sprintf("events.ExistsMessage: db error exists: %v", err))
+		h.toDLQ(ctx, msg, fmt.Sprintf("events.ExistsMessage: %v", err))
 		return h.commitOnDLQ
 	}
+
 	if exists {
 		h.log.Info().
-			Str("message_id", event.MessageID).
+			Str("message_id", event.MessageID.String()).
 			Str("employee_id", event.EmployeeID).
 			Msg("duplicate message, skip (idempotency)")
 		return true // коммитим — событие уже обработано ранее
@@ -54,12 +58,11 @@ func (h *handler) processPersonal(sess sarama.ConsumerGroupSession, msg *sarama.
 
 	if verr := validatePersonal(event.Payload); verr != "" {
 		h.toDLQ(ctx, msg, verr)
-
 		return h.commitOnDLQ
 	}
 
 	if err := h.events.InsertEvent(ctx, dto.KafkaEvent{
-		MessageID: msgID,
+		MessageID: event.MessageID,
 		Topic:     msg.Topic,
 		Key:       string(msg.Key),
 		Partition: int(msg.Partition),
@@ -71,37 +74,36 @@ func (h *handler) processPersonal(sess sarama.ConsumerGroupSession, msg *sarama.
 		return h.commitOnDLQ
 	}
 
-	// Бизнес-апдейт: upsert personal
-	first := event.Payload.FirstName
-	last := event.Payload.LastName
-	bdate := event.Payload.BirthDate
-	email := event.Payload.Contacts.Email
-	phone := event.Payload.Contacts.Phone
+	var (
+		first = event.Payload.FirstName
+		last  = event.Payload.LastName
+		bdate = event.Payload.BirthDate
+		email = event.Payload.Contacts.Email
+		phone = event.Payload.Contacts.Phone
+	)
 
-	// приводим к DTO (pointer-поля)
-	p := dto.EmployeeProfile{
+	// приводим к DTO
+	employee := dto.EmployeeProfile{
 		EmployeeID: event.EmployeeID,
-		UpdatedAt:  "",
 	}
 	if first != "" {
-		p.FirstName = &first
+		employee.FirstName = &first
 	}
 	if last != "" {
-		p.LastName = &last
+		employee.LastName = &last
 	}
 	if bdate != "" {
-		p.BirthDate = &bdate
+		employee.BirthDate = &bdate
 	}
 	if email != "" {
-		p.Email = &email
+		employee.Email = &email
 	}
 	if phone != "" {
-		p.Phone = &phone
+		employee.Phone = &phone
 	}
 
-	if err := h.profiles.UpsertPersonal(ctx, p); err != nil {
-		h.toDLQ(ctx, msg, fmt.Sprintf("profiles.UpsertPersonal db error upsert personal: %v", err))
-
+	if err := h.profiles.UpsertPersonal(ctx, employee); err != nil {
+		h.toDLQ(ctx, msg, fmt.Sprintf("profiles.UpsertPersonal: %v", err))
 		return h.commitOnDLQ
 	}
 

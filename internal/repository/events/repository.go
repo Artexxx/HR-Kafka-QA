@@ -3,9 +3,9 @@ package events
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/Artexxx/HR-Kafka-QA/internal/dto"
-
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -59,7 +59,7 @@ VALUES
 		ev.MessageID, ev.Topic, ev.Key, ev.Partition, ev.Offset, string(ev.Payload),
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("pool.Exec: %w", err)
 	}
 
 	return nil
@@ -74,102 +74,91 @@ VALUES
 `
 	_, err := r.pool.Exec(ctx, q, dlq.Topic, dlq.Key, string(dlq.Payload), dlq.Error)
 	if err != nil {
-		return err
+		return fmt.Errorf("pool.Exec: %w", err)
 	}
 
 	return nil
 }
 
-func (r *Repository) ListEvents(ctx context.Context, limit, offset int) ([]dto.KafkaEvent, error) {
-	if limit <= 0 {
-		limit = 100
-	}
-	if offset < 0 {
-		offset = 0
-	}
-
+func (r *Repository) ListEvents(ctx context.Context) ([]dto.KafkaEvent, error) {
 	q := `
 SELECT id, message_id, topic, msg_key, partition, "offset", payload, to_char(received_at, 'YYYY-MM-DD"T"HH24:MI:SSOF')
 FROM kafka_events
 ORDER BY id DESC
-LIMIT $1 OFFSET $2
 `
-	rows, err := r.pool.Query(ctx, q, limit, offset)
+	rows, err := r.pool.Query(ctx, q)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("pool.Query: %w", err)
 	}
 	defer rows.Close()
 
 	var out []dto.KafkaEvent
 	for rows.Next() {
 		var (
-			e       dto.KafkaEvent
-			payload []byte
+			kafkaEvent dto.KafkaEvent
+			payload    []byte
 		)
 
 		err = rows.Scan(
-			&e.ID, &e.MessageID, &e.Topic, &e.Key, &e.Partition, &e.Offset, &payload, &e.ReceivedAt,
+			&kafkaEvent.ID, &kafkaEvent.MessageID, &kafkaEvent.Topic, &kafkaEvent.Key, &kafkaEvent.Partition, &kafkaEvent.Offset, &payload, &kafkaEvent.ReceivedAt,
 		)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("rows.Scan: %w", err)
 		}
 
-		e.Payload = payload
-		out = append(out, e)
+		kafkaEvent.Payload = payload
+		out = append(out, kafkaEvent)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows.Err: %w", err)
 	}
 
-	return out, rows.Err()
+	return out, nil
 }
 
-func (r *Repository) ListDLQ(ctx context.Context, limit, offset int) ([]dto.KafkaDLQ, error) {
-	if limit <= 0 {
-		limit = 100
-	}
-	if offset < 0 {
-		offset = 0
-	}
-
-	q := `
-SELECT id, topic, msg_key, payload, error, to_char(received_at, 'YYYY-MM-DD"T"HH24:MI:SSOF')
-FROM kafka_dlq
-ORDER BY id DESC
-LIMIT $1 OFFSET $2;
+func (r *Repository) ListDLQ(ctx context.Context) ([]dto.KafkaDLQ, error) {
+	query := `
+select id, topic, msg_key, payload, error, to_char(received_at, 'YYYY-MM-DD"T"HH24:MI:SSOF')
+from kafka_dlq
+order by id desc
 `
-	rows, err := r.pool.Query(ctx, q, limit, offset)
+	rows, err := r.pool.Query(ctx, query)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("pool.Query: %w", err)
 	}
 	defer rows.Close()
 
 	var out []dto.KafkaDLQ
 	for rows.Next() {
 		var (
-			d       dto.KafkaDLQ
-			payload []byte
+			kafkaDLQ dto.KafkaDLQ
+			payload  []byte
 		)
 
-		err = rows.Scan(&d.ID, &d.Topic, &d.Key, &payload, &d.Error, &d.ReceivedAt)
+		err = rows.Scan(&kafkaDLQ.ID, &kafkaDLQ.Topic, &kafkaDLQ.Key, &payload, &kafkaDLQ.Error, &kafkaDLQ.ReceivedAt)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("rows.Scan: %w", err)
 		}
 
-		d.Payload = payload
-		out = append(out, d)
+		kafkaDLQ.Payload = payload
+		out = append(out, kafkaDLQ)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows.Err: %w", err)
 	}
 
-	return out, rows.Err()
+	return out, nil
 }
 
 func (r *Repository) ResetAll(ctx context.Context) error {
-	q := `
+	query := `
 TRUNCATE kafka_events RESTART IDENTITY CASCADE;
 TRUNCATE kafka_dlq RESTART IDENTITY CASCADE;
 TRUNCATE employment_history RESTART IDENTITY CASCADE;
 TRUNCATE employee_profile RESTART IDENTITY CASCADE;
 `
-	_, err := r.pool.Exec(ctx, q)
-	if err != nil {
-		return err
+	if _, err := r.pool.Exec(ctx, query); err != nil {
+		return fmt.Errorf("pool.Exec: %w", err)
 	}
 
 	return nil
