@@ -72,10 +72,10 @@ func (h *handler) processHistory(sess sarama.ConsumerGroupSession, msg *sarama.C
 
 	hDto := dto.EmploymentHistory{
 		EmployeeID: event.EmployeeID,
-		Company:    event.Payload.Company,
+		Company:    &event.Payload.Company,
 		Position:   nil,
-		PeriodFrom: event.Payload.Period.From,
-		PeriodTo:   event.Payload.Period.To,
+		PeriodFrom: &event.Payload.Period.From,
+		PeriodTo:   &event.Payload.Period.To,
 		Stack:      append([]string(nil), event.Payload.Stack...),
 	}
 	if event.Payload.Position != "" {

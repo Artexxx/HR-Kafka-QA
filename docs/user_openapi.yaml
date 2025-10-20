@@ -4,74 +4,82 @@ info:
     обработка 3 консьюмерами, запись в Postgres, проверка сценариев (порядок,
     дубликаты, DLQ, лаги)."
   title: QA Kafka Lab — HR Profiles Trainer
-  contact: { }
+  contact: {}
   license:
     name: MIT
     url: https://opensource.org/license/mit
   version: "1.0"
 paths:
+  /admin/reset:
+    post:
+      tags:
+        - Admin
+      summary: Полная очистка данных тренажёра (truncate lab.*)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.okResponse"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.errorResponse"
   /dlq:
     get:
       tags:
         - Producer
       summary: Сообщения DLQ
-      parameters:
-        - description: Лимит
-          name: limit
-          in: query
-          schema:
-            type: integer
-            default: 50
-        - description: Смещение
-          name: offset
-          in: query
-          schema:
-            type: integer
-            default: 0
       responses:
         "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/api.listResponse"
+                type: array
+                items:
+                  $ref: "#/components/schemas/dto.KafkaDLQ"
         "500":
-          description: Internal Server Error
+          description: Внутренняя ошибка
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/api.errorResponse"
+                type: string
   /events:
     get:
       tags:
         - Producer
       summary: Сырые события (эмуляция kafka_events)
-      parameters:
-        - description: Лимит
-          name: limit
-          in: query
-          schema:
-            type: integer
-            default: 50
-        - description: Смещение
-          name: offset
-          in: query
-          schema:
-            type: integer
-            default: 0
       responses:
         "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/api.listResponse"
+                type: array
+                items:
+                  $ref: "#/components/schemas/dto.KafkaEvent"
         "500":
-          description: Internal Server Error
+          description: Внутренняя ошибка
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/api.errorResponse"
+                type: string
+  /health:
+    get:
+      tags:
+        - Admin
+      summary: Проверка здоровья сервиса
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.okResponse"
   /history:
     post:
       tags:
@@ -81,24 +89,18 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/api.createHistoryRequest"
+              $ref: "#/components/schemas/dto.EmploymentHistory"
         description: История
         required: true
       responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/api.okResponse"
         "400":
-          description: Bad Request
+          description: Отсутствует employee_id
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/api.errorResponse"
         "500":
-          description: Internal Server Error
+          description: Внутренняя ошибка
           content:
             application/json:
               schema:
@@ -115,25 +117,25 @@ paths:
           required: true
           schema:
             type: string
-        - description: Лимит
-          name: limit
-          in: query
-          schema:
-            type: integer
-            default: 50
-        - description: Смещение
-          name: offset
-          in: query
-          schema:
-            type: integer
-            default: 0
       responses:
         "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/api.listResponse"
+                $ref: "#/components/schemas/dto.EmploymentHistory"
+        "400":
+          description: Отсутствует employee_id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.errorResponse"
+        "404":
+          description: Сотрудник не найден
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.errorResponse"
         "500":
           description: Internal Server Error
           content:
@@ -145,18 +147,11 @@ paths:
       tags:
         - CRUD-History
       summary: Обновить запись истории
-      parameters:
-        - description: ID записи истории
-          name: id
-          in: path
-          required: true
-          schema:
-            type: integer
       requestBody:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/api.updateHistoryRequest"
+              $ref: "#/components/schemas/dto.EmploymentHistory"
         description: Изменяемые поля
         required: true
       responses:
@@ -167,13 +162,13 @@ paths:
               schema:
                 $ref: "#/components/schemas/api.okResponse"
         "400":
-          description: Bad Request
+          description: Отсутствует id
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/api.errorResponse"
         "404":
-          description: Not Found
+          description: Запись не найдена
           content:
             application/json:
               schema:
@@ -196,20 +191,20 @@ paths:
           schema:
             type: integer
       responses:
-        "200":
-          description: OK
+        "400":
+          description: Отсутствует id
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/api.okResponse"
+                $ref: "#/components/schemas/api.errorResponse"
         "404":
-          description: Not Found
+          description: История не найдена
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/api.errorResponse"
         "500":
-          description: Internal Server Error
+          description: Внутренняя ошибка
           content:
             application/json:
               schema:
@@ -227,26 +222,14 @@ paths:
         description: payload
         required: true
       responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/api.okResponse"
         "400":
-          description: Bad Request
+          description: Отсутствует message_id/employee_id
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/api.errorResponse"
         "500":
-          description: Internal Server Error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/api.errorResponse"
-        "501":
-          description: Not Implemented
+          description: Внутренняя ошибка
           content:
             application/json:
               schema:
@@ -271,19 +254,13 @@ paths:
               schema:
                 $ref: "#/components/schemas/api.okResponse"
         "400":
-          description: Bad Request
+          description: Отсутствует message_id/employee_id
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/api.errorResponse"
         "500":
-          description: Internal Server Error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/api.errorResponse"
-        "501":
-          description: Not Implemented
+          description: Внутренняя ошибка
           content:
             application/json:
               schema:
@@ -308,19 +285,13 @@ paths:
               schema:
                 $ref: "#/components/schemas/api.okResponse"
         "400":
-          description: Bad Request
+          description: Отсутствует message_id/employee_id
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/api.errorResponse"
         "500":
-          description: Internal Server Error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/api.errorResponse"
-        "501":
-          description: Not Implemented
+          description: Внутренняя ошибка
           content:
             application/json:
               schema:
@@ -330,28 +301,17 @@ paths:
       tags:
         - CRUD-Profiles
       summary: Список профилей сотрудников
-      parameters:
-        - description: Лимит
-          name: limit
-          in: query
-          schema:
-            type: integer
-            default: 50
-        - description: Смещение
-          name: offset
-          in: query
-          schema:
-            type: integer
-            default: 0
       responses:
         "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/api.listResponse"
+                type: array
+                items:
+                  $ref: "#/components/schemas/dto.EmployeeProfile"
         "500":
-          description: Internal Server Error
+          description: InternalError — внутренняя ошибка
           content:
             application/json:
               schema:
@@ -361,12 +321,7 @@ paths:
         - CRUD-Profiles
       summary: Создать профиль
       requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/api.createProfileRequest"
-        description: Профиль
-        required: true
+        $ref: "#/components/requestBodies/dto.EmployeeProfile"
       responses:
         "200":
           description: OK
@@ -375,13 +330,19 @@ paths:
               schema:
                 $ref: "#/components/schemas/api.okResponse"
         "400":
-          description: Bad Request
+          description: Отсутствует employee_id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.errorResponse"
+        "409":
+          description: Профиль уже существует
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/api.errorResponse"
         "500":
-          description: Internal Server Error
+          description: Внутренняя ошибка
           content:
             application/json:
               schema:
@@ -404,15 +365,21 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/api.objectResponse"
+                $ref: "#/components/schemas/dto.EmployeeProfile"
+        "400":
+          description: Отсутствует employee_id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.errorResponse"
         "404":
-          description: Not Found
+          description: Сотрудник не найден
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/api.errorResponse"
         "500":
-          description: Internal Server Error
+          description: Внутренняя ошибка
           content:
             application/json:
               schema:
@@ -429,12 +396,7 @@ paths:
           schema:
             type: string
       requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/api.updateProfileRequest"
-        description: Изменяемые поля
-        required: true
+        $ref: "#/components/requestBodies/dto.EmployeeProfile"
       responses:
         "200":
           description: OK
@@ -443,19 +405,19 @@ paths:
               schema:
                 $ref: "#/components/schemas/api.okResponse"
         "400":
-          description: Bad Request
+          description: Отсутствует employee_id
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/api.errorResponse"
         "404":
-          description: Not Found
+          description: Сотрудник не найден
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/api.errorResponse"
         "500":
-          description: Internal Server Error
+          description: Внутренняя ошибка
           content:
             application/json:
               schema:
@@ -478,14 +440,20 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/api.okResponse"
+        "400":
+          description: Отсутствует employee_id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.errorResponse"
         "404":
-          description: Not Found
+          description: Сотрудник не найден
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/api.errorResponse"
         "500":
-          description: Internal Server Error
+          description: Внутренняя ошибка
           content:
             application/json:
               schema:
@@ -493,115 +461,61 @@ paths:
 servers:
   - url: http://127.0.0.1:8080
 
-    description: Local access
-
-  - url: https://user-app.brands.dev.itemcloud.ru
-
-    description: Dev Swagger UI
+    description: Swagger UI
   - url: /
 components:
+  requestBodies:
+    dto.EmployeeProfile:
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/dto.EmployeeProfile"
+      description: Профиль
+      required: true
   schemas:
-    api.createHistoryRequest:
+    api.errorResponse:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+    api.historyProduceRequest:
       type: object
       properties:
         company:
+          description: Компания
           type: string
-          example: Acme Corp
+          example: ООО Ромашка
         employee_id:
+          description: Идентификатор сотрудника
           type: string
           example: e-1024
+        message_id:
+          description: Идентификатор события (UUIDv4)
+          type: string
+          example: 0f2eb2b1-6a25-4d2a-8a7e-2c642e00e5ed
         period_from:
+          description: Начало периода (YYYY-MM-DD)
           type: string
           example: 2022-07-01
         period_to:
+          description: Окончание периода (YYYY-MM-DD)
           type: string
           example: 2025-09-30
         position:
+          description: Должность (опционально)
           type: string
-          example: QA
+          example: Инженер QA
         stack:
+          description: Стек (список строк)
           type: array
           items:
             type: string
           example:
             - Python
             - Pytest
-    api.createProfileRequest:
-      type: object
-      properties:
-        birth_date:
-          type: string
-          example: 1994-06-12
-        department:
-          type: string
-          example: Quality Assurance
-        effective_from:
-          type: string
-          example: 2025-10-01
-        email:
-          type: string
-          example: anna@example.com
-        employee_id:
-          type: string
-          example: e-1024
-        first_name:
-          type: string
-          example: Anna
-        grade:
-          type: string
-          example: Middle
-        last_name:
-          type: string
-          example: Ivanova
-        phone:
-          type: string
-          example: +33-123-45-67
-        title:
-          type: string
-          example: QA Engineer
-    api.errorResponse:
-      type: object
-      properties:
-        code:
-          type: string
-          example: invalid_json
-        message:
-          type: string
-          example: Некорректный JSON
-        status:
-          type: string
-          example: error
-    api.historyProduceRequest:
-      type: object
-      properties:
-        company:
-          type: string
-        employee_id:
-          type: string
-        message_id:
-          type: string
-        period_from:
-          type: string
-        period_to:
-          type: string
-        position:
-          type: string
-        stack:
-          type: array
-          items:
-            type: string
-    api.listResponse:
-      type: object
-      properties:
-        items: { }
-        limit:
-          type: integer
-        offset:
-          type: integer
-    api.objectResponse:
-      type: object
-      properties:
-        data: { }
+            - PostgreSQL
     api.okResponse:
       type: object
       properties:
@@ -615,67 +529,180 @@ components:
       type: object
       properties:
         birth_date:
+          description: Дата рождения (YYYY-MM-DD)
           type: string
+          example: 1994-06-12
         email:
+          description: Email
           type: string
+          example: anna@mail.ru
         employee_id:
+          description: Идентификатор сотрудника
           type: string
+          example: e-1024
         first_name:
+          description: Имя
           type: string
+          example: Анна
         last_name:
+          description: Фамилия
           type: string
+          example: Иванова
         message_id:
+          description: Идентификатор события (UUIDv4)
           type: string
+          example: 6b6f9c38-3e2a-4b3d-9a9a-9f1c0f8b2a10
         phone:
+          description: Телефон
           type: string
+          example: +7 916 123-45-67
     api.positionProduceRequest:
       type: object
       properties:
         department:
+          description: Подразделение
           type: string
+          example: Отдел качества
         effective_from:
+          description: Дата вступления в силу (YYYY-MM-DD)
           type: string
+          example: 2025-10-01
         employee_id:
+          description: Идентификатор сотрудника
           type: string
+          example: e-1024
         grade:
+          description: Грейд
           type: string
+          example: Middle
         message_id:
+          description: Идентификатор события (UUIDv4)
           type: string
+          example: a1d2f3c4-5678-4abc-9def-0123456789ab
         title:
+          description: Должность
           type: string
-    api.updateHistoryRequest:
-      type: object
-      properties:
-        company:
-          type: string
-        period_from:
-          type: string
-        period_to:
-          type: string
-        position:
-          type: string
-        stack:
-          type: array
-          items:
-            type: string
-    api.updateProfileRequest:
+          example: Инженер по тестированию
+    dto.EmployeeProfile:
       type: object
       properties:
         birth_date:
+          description: Дата рождения в формате YYYY-MM-DD
           type: string
+          example: 1994-06-12
         department:
+          description: Подразделение/отдел
           type: string
+          example: Отдел качества
         effective_from:
+          description: Дата вступления изменений в силу (YYYY-MM-DD)
           type: string
+          example: 2025-10-01
         email:
+          description: Корпоративная/личная почта сотрудника
           type: string
+          example: anna@mail.ru
+        employee_id:
+          description: Идентификатор сотрудника
+          type: string
+          example: e-1024
         first_name:
+          description: Имя сотрудника
           type: string
+          example: Анна
         grade:
+          description: Грейд (Junior, Middle, Senior или другой)
           type: string
+          example: Middle
         last_name:
+          description: Фамилия сотрудника
           type: string
+          example: Иванова
         phone:
+          description: Телефон
           type: string
+          example: +7 916 123-45-67
         title:
+          description: Должность
+          type: string
+          example: Инженер по тестированию
+        updated_at:
+          type: string
+    dto.EmploymentHistory:
+      type: object
+      properties:
+        company:
+          description: Компания
+          type: string
+          example: ООО Ромашка
+        created_at:
+          description: Время создания записи
+          type: string
+          example: 2025-10-19T10:15:30Z
+        employee_id:
+          description: Идентификатор сотрудника
+          type: string
+          example: e-1024
+        id:
+          description: Идентификатор записи (БД)
+          type: integer
+          example: 42
+        period_from:
+          description: Дата начала периода занятости (YYYY-MM-DD)
+          type: string
+          example: 2022-07-01
+        period_to:
+          description: Дата окончания периода занятости (YYYY-MM-DD)
+          type: string
+          example: 2025-09-30
+        position:
+          description: Должность
+          type: string
+          example: Инженер QA
+        stack:
+          description: Технологический стек (список строк)
+          type: array
+          items:
+            type: string
+          example:
+            - Python
+            - Pytest
+            - PostgreSQL
+    dto.KafkaDLQ:
+      type: object
+      properties:
+        error:
+          type: string
+        id:
+          type: integer
+        key:
+          type: string
+        payload:
+          type: array
+          items:
+            type: integer
+        received_at:
+          type: string
+        topic:
+          type: string
+    dto.KafkaEvent:
+      type: object
+      properties:
+        id:
+          type: integer
+        key:
+          type: string
+        message_id:
+          type: string
+        offset:
+          type: integer
+        partition:
+          type: integer
+        payload:
+          type: array
+          items:
+            type: integer
+        received_at:
+          type: string
+        topic:
           type: string

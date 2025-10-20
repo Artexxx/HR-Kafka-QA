@@ -160,10 +160,10 @@ func (s *Service) producerHistory(ctx *fasthttp.RequestCtx) {
 
 	h := dto.EmploymentHistory{
 		EmployeeID: req.EmployeeID,
-		Company:    req.Company,
+		Company:    &req.Company,
 		Position:   req.Position,
-		PeriodFrom: req.PeriodFrom,
-		PeriodTo:   req.PeriodTo,
+		PeriodFrom: &req.PeriodFrom,
+		PeriodTo:   &req.PeriodTo,
 		Stack:      req.Stack,
 	}
 

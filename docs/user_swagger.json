@@ -1,930 +1,961 @@
 {
-  "consumes": [
-    "application/json"
-  ],
-  "produces": [
-    "application/json"
-  ],
-  "schemes": [
-    "http"
-  ],
-  "swagger": "2.0",
-  "info": {
-    "description": "Учебный стенд для QA по Kafka: отправка событий продюсером, обработка 3 консьюмерами, запись в Postgres, проверка сценариев (порядок, дубликаты, DLQ, лаги).",
-    "title": "QA Kafka Lab — HR Profiles Trainer",
-    "contact": {},
-    "license": {
-      "name": "MIT",
-      "url": "https://opensource.org/license/mit"
+    "consumes": [
+        "application/json"
+    ],
+    "produces": [
+        "application/json"
+    ],
+    "schemes": [
+        "http"
+    ],
+    "swagger": "2.0",
+    "info": {
+        "description": "Учебный стенд для QA по Kafka: отправка событий продюсером, обработка 3 консьюмерами, запись в Postgres, проверка сценариев (порядок, дубликаты, DLQ, лаги).",
+        "title": "QA Kafka Lab — HR Profiles Trainer",
+        "contact": {},
+        "license": {
+            "name": "MIT",
+            "url": "https://opensource.org/license/mit"
+        },
+        "version": "1.0"
     },
-    "version": "1.0"
-  },
-  "basePath": "/",
-  "paths": {
-    "/dlq": {
-      "get": {
-        "produces": [
-          "application/json"
-        ],
-        "tags": [
-          "Producer"
-        ],
-        "summary": "Сообщения DLQ",
-        "parameters": [
-          {
-            "type": "integer",
-            "default": 50,
-            "description": "Лимит",
-            "name": "limit",
-            "in": "query"
-          },
-          {
-            "type": "integer",
-            "default": 0,
-            "description": "Смещение",
-            "name": "offset",
-            "in": "query"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/api.listResponse"
+    "basePath": "/",
+    "paths": {
+        "/admin/reset": {
+            "post": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Полная очистка данных тренажёра (truncate lab.*)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.okResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.errorResponse"
+                        }
+                    }
+                }
             }
-          },
-          "500": {
-            "description": "Internal Server Error",
-            "schema": {
-              "$ref": "#/definitions/api.errorResponse"
+        },
+        "/dlq": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Producer"
+                ],
+                "summary": "Сообщения DLQ",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/dto.KafkaDLQ"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
             }
-          }
+        },
+        "/events": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Producer"
+                ],
+                "summary": "Сырые события (эмуляция kafka_events)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/dto.KafkaEvent"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Проверка здоровья сервиса",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.okResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/history": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "CRUD-History"
+                ],
+                "summary": "Добавить запись в историю работы",
+                "parameters": [
+                    {
+                        "description": "История",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.EmploymentHistory"
+                        }
+                    }
+                ],
+                "responses": {
+                    "400": {
+                        "description": "Отсутствует employee_id",
+                        "schema": {
+                            "$ref": "#/definitions/api.errorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка",
+                        "schema": {
+                            "$ref": "#/definitions/api.errorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/history/{employee_id}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "CRUD-History"
+                ],
+                "summary": "История работы сотрудника",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Идентификатор сотрудника",
+                        "name": "employee_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.EmploymentHistory"
+                        }
+                    },
+                    "400": {
+                        "description": "Отсутствует employee_id",
+                        "schema": {
+                            "$ref": "#/definitions/api.errorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Сотрудник не найден",
+                        "schema": {
+                            "$ref": "#/definitions/api.errorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.errorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/history/{id}": {
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "CRUD-History"
+                ],
+                "summary": "Обновить запись истории",
+                "parameters": [
+                    {
+                        "description": "Изменяемые поля",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.EmploymentHistory"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.okResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Отсутствует id",
+                        "schema": {
+                            "$ref": "#/definitions/api.errorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Запись не найдена",
+                        "schema": {
+                            "$ref": "#/definitions/api.errorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.errorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "CRUD-History"
+                ],
+                "summary": "Удалить запись истории",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID записи истории",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "400": {
+                        "description": "Отсутствует id",
+                        "schema": {
+                            "$ref": "#/definitions/api.errorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "История не найдена",
+                        "schema": {
+                            "$ref": "#/definitions/api.errorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка",
+                        "schema": {
+                            "$ref": "#/definitions/api.errorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/producer/history": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Producer"
+                ],
+                "summary": "Публикация события в hr.history",
+                "parameters": [
+                    {
+                        "description": "payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.historyProduceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "400": {
+                        "description": "Отсутствует message_id/employee_id",
+                        "schema": {
+                            "$ref": "#/definitions/api.errorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка",
+                        "schema": {
+                            "$ref": "#/definitions/api.errorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/producer/personal": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Producer"
+                ],
+                "summary": "Публикация события в hr.personal",
+                "parameters": [
+                    {
+                        "description": "payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.personalProduceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.okResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Отсутствует message_id/employee_id",
+                        "schema": {
+                            "$ref": "#/definitions/api.errorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка",
+                        "schema": {
+                            "$ref": "#/definitions/api.errorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/producer/position": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Producer"
+                ],
+                "summary": "Публикация события в hr.positions",
+                "parameters": [
+                    {
+                        "description": "payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.positionProduceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.okResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Отсутствует message_id/employee_id",
+                        "schema": {
+                            "$ref": "#/definitions/api.errorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка",
+                        "schema": {
+                            "$ref": "#/definitions/api.errorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/profiles": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "CRUD-Profiles"
+                ],
+                "summary": "Список профилей сотрудников",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/dto.EmployeeProfile"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "InternalError — внутренняя ошибка",
+                        "schema": {
+                            "$ref": "#/definitions/api.errorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "CRUD-Profiles"
+                ],
+                "summary": "Создать профиль",
+                "parameters": [
+                    {
+                        "description": "Профиль",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.EmployeeProfile"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.okResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Отсутствует employee_id",
+                        "schema": {
+                            "$ref": "#/definitions/api.errorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Профиль уже существует",
+                        "schema": {
+                            "$ref": "#/definitions/api.errorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка",
+                        "schema": {
+                            "$ref": "#/definitions/api.errorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/profiles/{employee_id}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "CRUD-Profiles"
+                ],
+                "summary": "Получить профиль по employee_id",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Идентификатор сотрудника",
+                        "name": "employee_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.EmployeeProfile"
+                        }
+                    },
+                    "400": {
+                        "description": "Отсутствует employee_id",
+                        "schema": {
+                            "$ref": "#/definitions/api.errorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Сотрудник не найден",
+                        "schema": {
+                            "$ref": "#/definitions/api.errorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка",
+                        "schema": {
+                            "$ref": "#/definitions/api.errorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "CRUD-Profiles"
+                ],
+                "summary": "Обновить профиль",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Идентификатор сотрудника",
+                        "name": "employee_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Профиль",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.EmployeeProfile"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.okResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Отсутствует employee_id",
+                        "schema": {
+                            "$ref": "#/definitions/api.errorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Сотрудник не найден",
+                        "schema": {
+                            "$ref": "#/definitions/api.errorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка",
+                        "schema": {
+                            "$ref": "#/definitions/api.errorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "CRUD-Profiles"
+                ],
+                "summary": "Удалить профиль",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Идентификатор сотрудника",
+                        "name": "employee_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.okResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Отсутствует employee_id",
+                        "schema": {
+                            "$ref": "#/definitions/api.errorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Сотрудник не найден",
+                        "schema": {
+                            "$ref": "#/definitions/api.errorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка",
+                        "schema": {
+                            "$ref": "#/definitions/api.errorResponse"
+                        }
+                    }
+                }
+            }
         }
-      }
     },
-    "/events": {
-      "get": {
-        "produces": [
-          "application/json"
-        ],
-        "tags": [
-          "Producer"
-        ],
-        "summary": "Сырые события (эмуляция kafka_events)",
-        "parameters": [
-          {
-            "type": "integer",
-            "default": 50,
-            "description": "Лимит",
-            "name": "limit",
-            "in": "query"
-          },
-          {
-            "type": "integer",
-            "default": 0,
-            "description": "Смещение",
-            "name": "offset",
-            "in": "query"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/api.listResponse"
+    "definitions": {
+        "api.errorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                }
             }
-          },
-          "500": {
-            "description": "Internal Server Error",
-            "schema": {
-              "$ref": "#/definitions/api.errorResponse"
+        },
+        "api.historyProduceRequest": {
+            "type": "object",
+            "properties": {
+                "company": {
+                    "description": "Компания",
+                    "type": "string",
+                    "example": "ООО Ромашка"
+                },
+                "employee_id": {
+                    "description": "Идентификатор сотрудника",
+                    "type": "string",
+                    "example": "e-1024"
+                },
+                "message_id": {
+                    "description": "Идентификатор события (UUIDv4)",
+                    "type": "string",
+                    "example": "0f2eb2b1-6a25-4d2a-8a7e-2c642e00e5ed"
+                },
+                "period_from": {
+                    "description": "Начало периода (YYYY-MM-DD)",
+                    "type": "string",
+                    "example": "2022-07-01"
+                },
+                "period_to": {
+                    "description": "Окончание периода (YYYY-MM-DD)",
+                    "type": "string",
+                    "example": "2025-09-30"
+                },
+                "position": {
+                    "description": "Должность (опционально)",
+                    "type": "string",
+                    "example": "Инженер QA"
+                },
+                "stack": {
+                    "description": "Стек (список строк)",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "Python",
+                        "Pytest",
+                        "PostgreSQL"
+                    ]
+                }
             }
-          }
+        },
+        "api.okResponse": {
+            "type": "object",
+            "properties": {
+                "msg": {
+                    "type": "string",
+                    "example": "Готово"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "ok"
+                }
+            }
+        },
+        "api.personalProduceRequest": {
+            "type": "object",
+            "properties": {
+                "birth_date": {
+                    "description": "Дата рождения (YYYY-MM-DD)",
+                    "type": "string",
+                    "example": "1994-06-12"
+                },
+                "email": {
+                    "description": "Email",
+                    "type": "string",
+                    "example": "anna@mail.ru"
+                },
+                "employee_id": {
+                    "description": "Идентификатор сотрудника",
+                    "type": "string",
+                    "example": "e-1024"
+                },
+                "first_name": {
+                    "description": "Имя",
+                    "type": "string",
+                    "example": "Анна"
+                },
+                "last_name": {
+                    "description": "Фамилия",
+                    "type": "string",
+                    "example": "Иванова"
+                },
+                "message_id": {
+                    "description": "Идентификатор события (UUIDv4)",
+                    "type": "string",
+                    "example": "6b6f9c38-3e2a-4b3d-9a9a-9f1c0f8b2a10"
+                },
+                "phone": {
+                    "description": "Телефон",
+                    "type": "string",
+                    "example": "+7 916 123-45-67"
+                }
+            }
+        },
+        "api.positionProduceRequest": {
+            "type": "object",
+            "properties": {
+                "department": {
+                    "description": "Подразделение",
+                    "type": "string",
+                    "example": "Отдел качества"
+                },
+                "effective_from": {
+                    "description": "Дата вступления в силу (YYYY-MM-DD)",
+                    "type": "string",
+                    "example": "2025-10-01"
+                },
+                "employee_id": {
+                    "description": "Идентификатор сотрудника",
+                    "type": "string",
+                    "example": "e-1024"
+                },
+                "grade": {
+                    "description": "Грейд",
+                    "type": "string",
+                    "example": "Middle"
+                },
+                "message_id": {
+                    "description": "Идентификатор события (UUIDv4)",
+                    "type": "string",
+                    "example": "a1d2f3c4-5678-4abc-9def-0123456789ab"
+                },
+                "title": {
+                    "description": "Должность",
+                    "type": "string",
+                    "example": "Инженер по тестированию"
+                }
+            }
+        },
+        "dto.EmployeeProfile": {
+            "type": "object",
+            "properties": {
+                "birth_date": {
+                    "description": "Дата рождения в формате YYYY-MM-DD",
+                    "type": "string",
+                    "example": "1994-06-12"
+                },
+                "department": {
+                    "description": "Подразделение/отдел",
+                    "type": "string",
+                    "example": "Отдел качества"
+                },
+                "effective_from": {
+                    "description": "Дата вступления изменений в силу (YYYY-MM-DD)",
+                    "type": "string",
+                    "example": "2025-10-01"
+                },
+                "email": {
+                    "description": "Корпоративная/личная почта сотрудника",
+                    "type": "string",
+                    "example": "anna@mail.ru"
+                },
+                "employee_id": {
+                    "description": "Идентификатор сотрудника",
+                    "type": "string",
+                    "example": "e-1024"
+                },
+                "first_name": {
+                    "description": "Имя сотрудника",
+                    "type": "string",
+                    "example": "Анна"
+                },
+                "grade": {
+                    "description": "Грейд (Junior, Middle, Senior или другой)",
+                    "type": "string",
+                    "example": "Middle"
+                },
+                "last_name": {
+                    "description": "Фамилия сотрудника",
+                    "type": "string",
+                    "example": "Иванова"
+                },
+                "phone": {
+                    "description": "Телефон",
+                    "type": "string",
+                    "example": "+7 916 123-45-67"
+                },
+                "title": {
+                    "description": "Должность",
+                    "type": "string",
+                    "example": "Инженер по тестированию"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.EmploymentHistory": {
+            "type": "object",
+            "properties": {
+                "company": {
+                    "description": "Компания",
+                    "type": "string",
+                    "example": "ООО Ромашка"
+                },
+                "created_at": {
+                    "description": "Время создания записи",
+                    "type": "string",
+                    "example": "2025-10-19T10:15:30Z"
+                },
+                "employee_id": {
+                    "description": "Идентификатор сотрудника",
+                    "type": "string",
+                    "example": "e-1024"
+                },
+                "id": {
+                    "description": "Идентификатор записи (БД)",
+                    "type": "integer",
+                    "example": 42
+                },
+                "period_from": {
+                    "description": "Дата начала периода занятости (YYYY-MM-DD)",
+                    "type": "string",
+                    "example": "2022-07-01"
+                },
+                "period_to": {
+                    "description": "Дата окончания периода занятости (YYYY-MM-DD)",
+                    "type": "string",
+                    "example": "2025-09-30"
+                },
+                "position": {
+                    "description": "Должность",
+                    "type": "string",
+                    "example": "Инженер QA"
+                },
+                "stack": {
+                    "description": "Технологический стек (список строк)",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "Python",
+                        "Pytest",
+                        "PostgreSQL"
+                    ]
+                }
+            }
+        },
+        "dto.KafkaDLQ": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "key": {
+                    "type": "string"
+                },
+                "payload": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "received_at": {
+                    "type": "string"
+                },
+                "topic": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.KafkaEvent": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "key": {
+                    "type": "string"
+                },
+                "message_id": {
+                    "type": "string"
+                },
+                "offset": {
+                    "type": "integer"
+                },
+                "partition": {
+                    "type": "integer"
+                },
+                "payload": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "received_at": {
+                    "type": "string"
+                },
+                "topic": {
+                    "type": "string"
+                }
+            }
         }
-      }
-    },
-    "/history": {
-      "post": {
-        "consumes": [
-          "application/json"
-        ],
-        "produces": [
-          "application/json"
-        ],
-        "tags": [
-          "CRUD-History"
-        ],
-        "summary": "Добавить запись в историю работы",
-        "parameters": [
-          {
-            "description": "История",
-            "name": "request",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/api.createHistoryRequest"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/api.okResponse"
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "schema": {
-              "$ref": "#/definitions/api.errorResponse"
-            }
-          },
-          "500": {
-            "description": "Internal Server Error",
-            "schema": {
-              "$ref": "#/definitions/api.errorResponse"
-            }
-          }
-        }
-      }
-    },
-    "/history/{employee_id}": {
-      "get": {
-        "produces": [
-          "application/json"
-        ],
-        "tags": [
-          "CRUD-History"
-        ],
-        "summary": "История работы сотрудника",
-        "parameters": [
-          {
-            "type": "string",
-            "description": "Идентификатор сотрудника",
-            "name": "employee_id",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "integer",
-            "default": 50,
-            "description": "Лимит",
-            "name": "limit",
-            "in": "query"
-          },
-          {
-            "type": "integer",
-            "default": 0,
-            "description": "Смещение",
-            "name": "offset",
-            "in": "query"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/api.listResponse"
-            }
-          },
-          "500": {
-            "description": "Internal Server Error",
-            "schema": {
-              "$ref": "#/definitions/api.errorResponse"
-            }
-          }
-        }
-      }
-    },
-    "/history/{id}": {
-      "put": {
-        "consumes": [
-          "application/json"
-        ],
-        "produces": [
-          "application/json"
-        ],
-        "tags": [
-          "CRUD-History"
-        ],
-        "summary": "Обновить запись истории",
-        "parameters": [
-          {
-            "type": "integer",
-            "description": "ID записи истории",
-            "name": "id",
-            "in": "path",
-            "required": true
-          },
-          {
-            "description": "Изменяемые поля",
-            "name": "request",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/api.updateHistoryRequest"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/api.okResponse"
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "schema": {
-              "$ref": "#/definitions/api.errorResponse"
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "schema": {
-              "$ref": "#/definitions/api.errorResponse"
-            }
-          },
-          "500": {
-            "description": "Internal Server Error",
-            "schema": {
-              "$ref": "#/definitions/api.errorResponse"
-            }
-          }
-        }
-      },
-      "delete": {
-        "produces": [
-          "application/json"
-        ],
-        "tags": [
-          "CRUD-History"
-        ],
-        "summary": "Удалить запись истории",
-        "parameters": [
-          {
-            "type": "integer",
-            "description": "ID записи истории",
-            "name": "id",
-            "in": "path",
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/api.okResponse"
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "schema": {
-              "$ref": "#/definitions/api.errorResponse"
-            }
-          },
-          "500": {
-            "description": "Internal Server Error",
-            "schema": {
-              "$ref": "#/definitions/api.errorResponse"
-            }
-          }
-        }
-      }
-    },
-    "/producer/history": {
-      "post": {
-        "consumes": [
-          "application/json"
-        ],
-        "produces": [
-          "application/json"
-        ],
-        "tags": [
-          "Producer"
-        ],
-        "summary": "Публикация события в hr.history",
-        "parameters": [
-          {
-            "description": "payload",
-            "name": "request",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/api.historyProduceRequest"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/api.okResponse"
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "schema": {
-              "$ref": "#/definitions/api.errorResponse"
-            }
-          },
-          "500": {
-            "description": "Internal Server Error",
-            "schema": {
-              "$ref": "#/definitions/api.errorResponse"
-            }
-          },
-          "501": {
-            "description": "Not Implemented",
-            "schema": {
-              "$ref": "#/definitions/api.errorResponse"
-            }
-          }
-        }
-      }
-    },
-    "/producer/personal": {
-      "post": {
-        "consumes": [
-          "application/json"
-        ],
-        "produces": [
-          "application/json"
-        ],
-        "tags": [
-          "Producer"
-        ],
-        "summary": "Публикация события в hr.personal",
-        "parameters": [
-          {
-            "description": "payload",
-            "name": "request",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/api.personalProduceRequest"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/api.okResponse"
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "schema": {
-              "$ref": "#/definitions/api.errorResponse"
-            }
-          },
-          "500": {
-            "description": "Internal Server Error",
-            "schema": {
-              "$ref": "#/definitions/api.errorResponse"
-            }
-          },
-          "501": {
-            "description": "Not Implemented",
-            "schema": {
-              "$ref": "#/definitions/api.errorResponse"
-            }
-          }
-        }
-      }
-    },
-    "/producer/position": {
-      "post": {
-        "consumes": [
-          "application/json"
-        ],
-        "produces": [
-          "application/json"
-        ],
-        "tags": [
-          "Producer"
-        ],
-        "summary": "Публикация события в hr.positions",
-        "parameters": [
-          {
-            "description": "payload",
-            "name": "request",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/api.positionProduceRequest"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/api.okResponse"
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "schema": {
-              "$ref": "#/definitions/api.errorResponse"
-            }
-          },
-          "500": {
-            "description": "Internal Server Error",
-            "schema": {
-              "$ref": "#/definitions/api.errorResponse"
-            }
-          },
-          "501": {
-            "description": "Not Implemented",
-            "schema": {
-              "$ref": "#/definitions/api.errorResponse"
-            }
-          }
-        }
-      }
-    },
-    "/profiles": {
-      "get": {
-        "produces": [
-          "application/json"
-        ],
-        "tags": [
-          "CRUD-Profiles"
-        ],
-        "summary": "Список профилей сотрудников",
-        "parameters": [
-          {
-            "type": "integer",
-            "default": 50,
-            "description": "Лимит",
-            "name": "limit",
-            "in": "query"
-          },
-          {
-            "type": "integer",
-            "default": 0,
-            "description": "Смещение",
-            "name": "offset",
-            "in": "query"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/api.listResponse"
-            }
-          },
-          "500": {
-            "description": "Internal Server Error",
-            "schema": {
-              "$ref": "#/definitions/api.errorResponse"
-            }
-          }
-        }
-      },
-      "post": {
-        "consumes": [
-          "application/json"
-        ],
-        "produces": [
-          "application/json"
-        ],
-        "tags": [
-          "CRUD-Profiles"
-        ],
-        "summary": "Создать профиль",
-        "parameters": [
-          {
-            "description": "Профиль",
-            "name": "request",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/api.createProfileRequest"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/api.okResponse"
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "schema": {
-              "$ref": "#/definitions/api.errorResponse"
-            }
-          },
-          "500": {
-            "description": "Internal Server Error",
-            "schema": {
-              "$ref": "#/definitions/api.errorResponse"
-            }
-          }
-        }
-      }
-    },
-    "/profiles/{employee_id}": {
-      "get": {
-        "produces": [
-          "application/json"
-        ],
-        "tags": [
-          "CRUD-Profiles"
-        ],
-        "summary": "Получить профиль по employee_id",
-        "parameters": [
-          {
-            "type": "string",
-            "description": "Идентификатор сотрудника",
-            "name": "employee_id",
-            "in": "path",
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/api.objectResponse"
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "schema": {
-              "$ref": "#/definitions/api.errorResponse"
-            }
-          },
-          "500": {
-            "description": "Internal Server Error",
-            "schema": {
-              "$ref": "#/definitions/api.errorResponse"
-            }
-          }
-        }
-      },
-      "put": {
-        "consumes": [
-          "application/json"
-        ],
-        "produces": [
-          "application/json"
-        ],
-        "tags": [
-          "CRUD-Profiles"
-        ],
-        "summary": "Обновить профиль",
-        "parameters": [
-          {
-            "type": "string",
-            "description": "Идентификатор сотрудника",
-            "name": "employee_id",
-            "in": "path",
-            "required": true
-          },
-          {
-            "description": "Изменяемые поля",
-            "name": "request",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/api.updateProfileRequest"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/api.okResponse"
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "schema": {
-              "$ref": "#/definitions/api.errorResponse"
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "schema": {
-              "$ref": "#/definitions/api.errorResponse"
-            }
-          },
-          "500": {
-            "description": "Internal Server Error",
-            "schema": {
-              "$ref": "#/definitions/api.errorResponse"
-            }
-          }
-        }
-      },
-      "delete": {
-        "produces": [
-          "application/json"
-        ],
-        "tags": [
-          "CRUD-Profiles"
-        ],
-        "summary": "Удалить профиль",
-        "parameters": [
-          {
-            "type": "string",
-            "description": "Идентификатор сотрудника",
-            "name": "employee_id",
-            "in": "path",
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/api.okResponse"
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "schema": {
-              "$ref": "#/definitions/api.errorResponse"
-            }
-          },
-          "500": {
-            "description": "Internal Server Error",
-            "schema": {
-              "$ref": "#/definitions/api.errorResponse"
-            }
-          }
-        }
-      }
     }
-  },
-  "definitions": {
-    "api.createHistoryRequest": {
-      "type": "object",
-      "properties": {
-        "company": {
-          "type": "string",
-          "example": "Acme Corp"
-        },
-        "employee_id": {
-          "type": "string",
-          "example": "e-1024"
-        },
-        "period_from": {
-          "type": "string",
-          "example": "2022-07-01"
-        },
-        "period_to": {
-          "type": "string",
-          "example": "2025-09-30"
-        },
-        "position": {
-          "type": "string",
-          "example": "QA"
-        },
-        "stack": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "example": [
-            "Python",
-            "Pytest"
-          ]
-        }
-      }
-    },
-    "api.createProfileRequest": {
-      "type": "object",
-      "properties": {
-        "birth_date": {
-          "type": "string",
-          "example": "1994-06-12"
-        },
-        "department": {
-          "type": "string",
-          "example": "Quality Assurance"
-        },
-        "effective_from": {
-          "type": "string",
-          "example": "2025-10-01"
-        },
-        "email": {
-          "type": "string",
-          "example": "anna@example.com"
-        },
-        "employee_id": {
-          "type": "string",
-          "example": "e-1024"
-        },
-        "first_name": {
-          "type": "string",
-          "example": "Anna"
-        },
-        "grade": {
-          "type": "string",
-          "example": "Middle"
-        },
-        "last_name": {
-          "type": "string",
-          "example": "Ivanova"
-        },
-        "phone": {
-          "type": "string",
-          "example": "+33-123-45-67"
-        },
-        "title": {
-          "type": "string",
-          "example": "QA Engineer"
-        }
-      }
-    },
-    "api.errorResponse": {
-      "type": "object",
-      "properties": {
-        "code": {
-          "type": "string",
-          "example": "invalid_json"
-        },
-        "message": {
-          "type": "string",
-          "example": "Некорректный JSON"
-        },
-        "status": {
-          "type": "string",
-          "example": "error"
-        }
-      }
-    },
-    "api.historyProduceRequest": {
-      "type": "object",
-      "properties": {
-        "company": {
-          "type": "string"
-        },
-        "employee_id": {
-          "type": "string"
-        },
-        "message_id": {
-          "type": "string"
-        },
-        "period_from": {
-          "type": "string"
-        },
-        "period_to": {
-          "type": "string"
-        },
-        "position": {
-          "type": "string"
-        },
-        "stack": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "api.listResponse": {
-      "type": "object",
-      "properties": {
-        "items": {},
-        "limit": {
-          "type": "integer"
-        },
-        "offset": {
-          "type": "integer"
-        }
-      }
-    },
-    "api.objectResponse": {
-      "type": "object",
-      "properties": {
-        "data": {}
-      }
-    },
-    "api.okResponse": {
-      "type": "object",
-      "properties": {
-        "msg": {
-          "type": "string",
-          "example": "Готово"
-        },
-        "status": {
-          "type": "string",
-          "example": "ok"
-        }
-      }
-    },
-    "api.personalProduceRequest": {
-      "type": "object",
-      "properties": {
-        "birth_date": {
-          "type": "string"
-        },
-        "email": {
-          "type": "string"
-        },
-        "employee_id": {
-          "type": "string"
-        },
-        "first_name": {
-          "type": "string"
-        },
-        "last_name": {
-          "type": "string"
-        },
-        "message_id": {
-          "type": "string"
-        },
-        "phone": {
-          "type": "string"
-        }
-      }
-    },
-    "api.positionProduceRequest": {
-      "type": "object",
-      "properties": {
-        "department": {
-          "type": "string"
-        },
-        "effective_from": {
-          "type": "string"
-        },
-        "employee_id": {
-          "type": "string"
-        },
-        "grade": {
-          "type": "string"
-        },
-        "message_id": {
-          "type": "string"
-        },
-        "title": {
-          "type": "string"
-        }
-      }
-    },
-    "api.updateHistoryRequest": {
-      "type": "object",
-      "properties": {
-        "company": {
-          "type": "string"
-        },
-        "period_from": {
-          "type": "string"
-        },
-        "period_to": {
-          "type": "string"
-        },
-        "position": {
-          "type": "string"
-        },
-        "stack": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "api.updateProfileRequest": {
-      "type": "object",
-      "properties": {
-        "birth_date": {
-          "type": "string"
-        },
-        "department": {
-          "type": "string"
-        },
-        "effective_from": {
-          "type": "string"
-        },
-        "email": {
-          "type": "string"
-        },
-        "first_name": {
-          "type": "string"
-        },
-        "grade": {
-          "type": "string"
-        },
-        "last_name": {
-          "type": "string"
-        },
-        "phone": {
-          "type": "string"
-        },
-        "title": {
-          "type": "string"
-        }
-      }
-    }
-  }
 }

@@ -137,12 +137,18 @@ func (p *HRProducer) ProduceHistory(ctx context.Context, messageID uuid.UUID, h 
 
 	payload.MessageID = messageID
 	payload.EmployeeID = h.EmployeeID
-	payload.Company = h.Company
+	if h.Company != nil {
+		payload.Company = *h.Company
+	}
 	if h.Position != nil {
 		payload.Position = *h.Position
 	}
-	payload.Period.From = h.PeriodFrom
-	payload.Period.To = h.PeriodTo
+	if h.PeriodFrom != nil {
+		payload.Period.From = *h.PeriodFrom
+	}
+	if h.PeriodTo != nil {
+		payload.Period.To = *h.PeriodTo
+	}
 	payload.Stack = append(payload.Stack, h.Stack...)
 
 	event := Envelope[HistoryPayload]{

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"github.com/valyala/fasthttp"
 )
 
@@ -19,8 +20,9 @@ func (s *Service) healthHandler(ctx *fasthttp.RequestCtx) {
 // @Router  /admin/reset [post]
 func (s *Service) resetHandler(ctx *fasthttp.RequestCtx) {
 	if err := s.events.ResetAll(ctx); err != nil {
-		serverError(ctx, err)
+		writeError(ctx, fasthttp.StatusInternalServerError, fmt.Errorf("events.ResetAll: %w", err))
 		return
 	}
+
 	ok(ctx, "Все данные очищены")
 }

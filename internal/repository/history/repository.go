@@ -104,7 +104,7 @@ select id,
 	   to_char(period_from,'YYYY-MM-DD'),
 	   to_char(period_to,'YYYY-MM-DD'),
 	   stack,
-	   to_char(created_at,'YYYY-MM-DD"T"HH24:MI:SSOF')
+	   created_at
 from employment_history
 where employee_id = $1
 order by id desc
@@ -143,7 +143,7 @@ select id,
 	   to_char(period_from,'YYYY-MM-DD'),
 	   to_char(period_to,'YYYY-MM-DD'),
 	   stack,
-	   to_char(created_at,'YYYY-MM-DD"T"HH24:MI:SSOF')
+	   created_at
 from employment_history
 where id = $1;
 `
