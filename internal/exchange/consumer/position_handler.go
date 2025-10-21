@@ -28,57 +28,56 @@ func NewPositionsRunner(
 
 	return newRunner(bootstrap, groupID, topic, h, log)
 }
-func (h *handler) processPosition(sess sarama.ConsumerGroupSession, msg *sarama.ConsumerMessage, event Envelope[PositionPayload]) bool {
+func (h *handler) processPosition(sess sarama.ConsumerGroupSession, msg *sarama.ConsumerMessage, messageId uuid.UUID, position PositionPayload) bool {
 	ctx := sess.Context()
 
-	if event.MessageID != uuid.Nil {
+	if messageId == uuid.Nil {
 		h.toDLQ(ctx, msg, "missing required field message_id")
 		return h.commitOnDLQ
 	}
 
-	if event.EmployeeID == "" {
+	if position.EmployeeID == "" {
 		h.toDLQ(ctx, msg, "missing required field employee_id")
 		return h.commitOnDLQ
 	}
 
-	exists, err := h.events.ExistsMessage(ctx, event.MessageID)
+	exists, err := h.events.ExistsMessage(ctx, messageId)
 	if err != nil {
 		h.toDLQ(ctx, msg, fmt.Sprintf("events.ExistsMessage: %v", err))
 
 		return h.commitOnDLQ
 	}
 	if exists {
-		h.log.Info().Str("message_id", event.MessageID.String()).Str("employee_id", event.EmployeeID).Msg("duplicate message, skip (idempotency)")
+		h.log.Info().Str("message_id", messageId.String()).Str("employee_id", position.EmployeeID).Msg("duplicate message, skip (idempotency)")
 		return true
 	}
 
-	if verr := validatePosition(event.Payload); verr != "" {
+	if verr := validatePosition(position); verr != "" {
 		h.toDLQ(ctx, msg, verr)
 		return h.commitOnDLQ
 	}
 
 	if err := h.events.InsertEvent(ctx, dto.KafkaEvent{
-		MessageID: event.MessageID,
+		MessageID: messageId,
 		Topic:     msg.Topic,
-		Key:       string(msg.Key),
 		Partition: int(msg.Partition),
 		Offset:    msg.Offset,
 		Payload:   append([]byte(nil), msg.Value...),
 	}); err != nil {
-		h.toDLQ(ctx, msg, fmt.Sprintf("events.InsertEvent: db error insert event: %v", err))
+		h.toDLQ(ctx, msg, fmt.Sprintf("events.InsertEvent: db error insert position: %v", err))
 
 		return h.commitOnDLQ
 	}
 
 	var (
-		title = event.Payload.Title
-		dept  = event.Payload.Department
-		grade = event.Payload.Grade
-		eff   = event.Payload.EffectiveFrom
+		title = position.Title
+		dept  = position.Department
+		grade = position.Grade
+		eff   = position.EffectiveFrom
 	)
 
 	payload := dto.EmployeeProfile{
-		EmployeeID: event.EmployeeID,
+		EmployeeID: position.EmployeeID,
 	}
 
 	if title != "" {

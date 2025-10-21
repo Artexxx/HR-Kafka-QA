@@ -27,13 +27,13 @@ func NewRepository(pool PgxPoolIface) *Repository {
 }
 
 func (r *Repository) ExistsMessage(ctx context.Context, messageID uuid.UUID) (bool, error) {
-	q := `
+	query := `
 SELECT 1
 FROM kafka_events
 WHERE message_id = $1::uuid
 LIMIT 1;
 `
-	row := r.pool.QueryRow(ctx, q, messageID)
+	row := r.pool.QueryRow(ctx, query, messageID)
 
 	var x int
 	err := row.Scan(&x)
@@ -48,16 +48,14 @@ LIMIT 1;
 	return true, nil
 }
 
-func (r *Repository) InsertEvent(ctx context.Context, ev dto.KafkaEvent) error {
-	q := `
+func (r *Repository) InsertEvent(ctx context.Context, event dto.KafkaEvent) error {
+	query := `
 INSERT INTO kafka_events
-	(message_id, topic, msg_key, partition, "offset", payload, received_at)
+	(topic, message_id, partition, "offset", payload, received_at)
 VALUES
-	($1::uuid, $2, $3, $4, $5, $6::jsonb, NOW());
+	($1, $2, $3, $4, $5::jsonb, NOW());
 `
-	_, err := r.pool.Exec(ctx, q,
-		ev.MessageID, ev.Topic, ev.Key, ev.Partition, ev.Offset, string(ev.Payload),
-	)
+	_, err := r.pool.Exec(ctx, query, event.Topic, event.MessageID, event.Partition, event.Offset, string(event.Payload))
 	if err != nil {
 		return fmt.Errorf("pool.Exec: %w", err)
 	}
@@ -66,13 +64,13 @@ VALUES
 }
 
 func (r *Repository) InsertDLQ(ctx context.Context, dlq dto.KafkaDLQ) error {
-	q := `
+	query := `
 INSERT INTO kafka_dlq
 	(topic, msg_key, payload, error, received_at)
 VALUES
 	($1, $2, $3::jsonb, $4, NOW());
 `
-	_, err := r.pool.Exec(ctx, q, dlq.Topic, dlq.Key, string(dlq.Payload), dlq.Error)
+	_, err := r.pool.Exec(ctx, query, dlq.Topic, dlq.Key, string(dlq.Payload), dlq.Error)
 	if err != nil {
 		return fmt.Errorf("pool.Exec: %w", err)
 	}
@@ -81,12 +79,12 @@ VALUES
 }
 
 func (r *Repository) ListEvents(ctx context.Context) ([]dto.KafkaEvent, error) {
-	q := `
-SELECT id, message_id, topic, msg_key, partition, "offset", payload, to_char(received_at, 'YYYY-MM-DD"T"HH24:MI:SSOF')
+	query := `
+SELECT id, topic, message_id, partition, "offset", payload, to_char(received_at, 'YYYY-MM-DD"T"HH24:MI:SSOF')
 FROM kafka_events
 ORDER BY id DESC
 `
-	rows, err := r.pool.Query(ctx, q)
+	rows, err := r.pool.Query(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("pool.Query: %w", err)
 	}
@@ -99,9 +97,7 @@ ORDER BY id DESC
 			payload    []byte
 		)
 
-		err = rows.Scan(
-			&kafkaEvent.ID, &kafkaEvent.MessageID, &kafkaEvent.Topic, &kafkaEvent.Key, &kafkaEvent.Partition, &kafkaEvent.Offset, &payload, &kafkaEvent.ReceivedAt,
-		)
+		err = rows.Scan(&kafkaEvent.ID, &kafkaEvent.Topic, &kafkaEvent.MessageID, &kafkaEvent.Partition, &kafkaEvent.Offset, &payload, &kafkaEvent.ReceivedAt)
 		if err != nil {
 			return nil, fmt.Errorf("rows.Scan: %w", err)
 		}

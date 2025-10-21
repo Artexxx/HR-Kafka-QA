@@ -60,7 +60,7 @@ func (s *Service) producerPersonal(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	if req.MessageID != uuid.Nil {
+	if req.MessageID == uuid.Nil {
 		writeError(ctx, fasthttp.StatusBadRequest, ErrMessageIDRequired)
 		return
 	}
@@ -105,7 +105,7 @@ func (s *Service) producerPosition(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	if req.MessageID != uuid.Nil {
+	if req.MessageID == uuid.Nil {
 		writeError(ctx, fasthttp.StatusBadRequest, ErrMessageIDRequired)
 		return
 	}
@@ -148,7 +148,7 @@ func (s *Service) producerHistory(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	if req.MessageID != uuid.Nil {
+	if req.MessageID == uuid.Nil {
 		writeError(ctx, fasthttp.StatusBadRequest, ErrMessageIDRequired)
 		return
 	}
@@ -158,7 +158,7 @@ func (s *Service) producerHistory(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	h := dto.EmploymentHistory{
+	history := dto.EmploymentHistory{
 		EmployeeID: req.EmployeeID,
 		Company:    &req.Company,
 		Position:   req.Position,
@@ -167,7 +167,7 @@ func (s *Service) producerHistory(ctx *fasthttp.RequestCtx) {
 		Stack:      req.Stack,
 	}
 
-	if err := s.producer.ProduceHistory(ctx, req.MessageID, h); err != nil {
+	if err := s.producer.ProduceHistory(ctx, req.MessageID, history); err != nil {
 		writeError(ctx, fasthttp.StatusInternalServerError, fmt.Errorf("producer.ProducePosition: %w", err))
 		return
 	}

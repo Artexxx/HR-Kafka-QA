@@ -2,7 +2,6 @@ CREATE TABLE IF NOT EXISTS kafka_events (
                                                 id          BIGSERIAL PRIMARY KEY,
                                                 message_id  UUID UNIQUE,
                                                 topic       TEXT NOT NULL,
-                                                msg_key     TEXT,
                                                 partition   INT,
                                                 "offset"      BIGINT,
                                                 payload     JSONB NOT NULL,

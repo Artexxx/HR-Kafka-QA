@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"time"
-
 	"github.com/Artexxx/HR-Kafka-QA/internal/dto"
 	"github.com/IBM/sarama"
 	"github.com/google/uuid"
@@ -50,7 +48,6 @@ func (p *HRProducer) Close() error {
 func (p *HRProducer) ProducePersonal(ctx context.Context, messageID uuid.UUID, profile dto.EmployeeProfile) error {
 	var payload PersonalPayload
 
-	payload.MessageID = messageID
 	payload.EmployeeID = profile.EmployeeID
 	if profile.FirstName != nil {
 		payload.FirstName = *profile.FirstName
@@ -68,24 +65,13 @@ func (p *HRProducer) ProducePersonal(ctx context.Context, messageID uuid.UUID, p
 		payload.Contacts.Phone = *profile.Phone
 	}
 
-	event := Envelope[PersonalPayload]{
-		Kind:       "personal",
-		MessageID:  payload.MessageID,
-		EmployeeID: payload.EmployeeID,
-		Payload:    payload,
-		Timestamp:  time.Now().UTC(),
-		Source:     p.source,
-	}
-
-	body, err := json.Marshal(event)
+	body, err := json.Marshal(payload)
 	if err != nil {
-		return fmt.Errorf("marshal personal envelope: %w", err)
+		return fmt.Errorf("marshal personal payload: %w", err)
 	}
 
-	return p.send(ctx, p.topicPersonal, payload.EmployeeID, body, map[string]string{
+	return p.send(ctx, p.topicPersonal, messageID.String(), body, map[string]string{
 		"event-kind":   "personal",
-		"message-id":   payload.MessageID.String(),
-		"employee-id":  payload.EmployeeID,
 		"source":       p.source,
 		"content-type": "application/json",
 	})
@@ -94,7 +80,6 @@ func (p *HRProducer) ProducePersonal(ctx context.Context, messageID uuid.UUID, p
 func (p *HRProducer) ProducePosition(ctx context.Context, messageID uuid.UUID, profile dto.EmployeeProfile) error {
 	var payload PositionPayload
 
-	payload.MessageID = messageID
 	payload.EmployeeID = profile.EmployeeID
 	if profile.Title != nil {
 		payload.Title = *profile.Title
@@ -109,68 +94,44 @@ func (p *HRProducer) ProducePosition(ctx context.Context, messageID uuid.UUID, p
 		payload.EffectiveFrom = *profile.EffectiveFrom
 	}
 
-	event := Envelope[PositionPayload]{
-		Kind:       "position",
-		MessageID:  payload.MessageID,
-		EmployeeID: payload.EmployeeID,
-		Payload:    payload,
-		Timestamp:  time.Now().UTC(),
-		Source:     p.source,
-	}
-
-	body, err := json.Marshal(event)
+	body, err := json.Marshal(payload)
 	if err != nil {
-		return fmt.Errorf("marshal position envelope: %w", err)
+		return fmt.Errorf("marshal position payload: %w", err)
 	}
 
-	return p.send(ctx, p.topicPositions, payload.EmployeeID, body, map[string]string{
+	return p.send(ctx, p.topicPositions, messageID.String(), body, map[string]string{
 		"event-kind":   "position",
-		"message-id":   payload.MessageID.String(),
-		"employee-id":  payload.EmployeeID,
 		"source":       p.source,
 		"content-type": "application/json",
 	})
 }
 
-func (p *HRProducer) ProduceHistory(ctx context.Context, messageID uuid.UUID, h dto.EmploymentHistory) error {
-	var payload HistoryPayload
+func (p *HRProducer) ProduceHistory(ctx context.Context, messageID uuid.UUID, history dto.EmploymentHistory) error {
+	var body HistoryPayload
 
-	payload.MessageID = messageID
-	payload.EmployeeID = h.EmployeeID
-	if h.Company != nil {
-		payload.Company = *h.Company
+	body.EmployeeID = history.EmployeeID
+	if history.Company != nil {
+		body.Company = *history.Company
 	}
-	if h.Position != nil {
-		payload.Position = *h.Position
+	if history.Position != nil {
+		body.Position = *history.Position
 	}
-	if h.PeriodFrom != nil {
-		payload.Period.From = *h.PeriodFrom
+	if history.PeriodFrom != nil {
+		body.Period.From = *history.PeriodFrom
 	}
-	if h.PeriodTo != nil {
-		payload.Period.To = *h.PeriodTo
+	if history.PeriodTo != nil {
+		body.Period.To = *history.PeriodTo
 	}
-	payload.Stack = append(payload.Stack, h.Stack...)
+	body.Stack = append(body.Stack, history.Stack...)
 
-	event := Envelope[HistoryPayload]{
-		Kind:       "history",
-		MessageID:  payload.MessageID,
-		EmployeeID: payload.EmployeeID,
-		Payload:    payload,
-		Timestamp:  time.Now().UTC(),
-		Source:     p.source,
-	}
-
-	body, err := json.Marshal(event)
+	message, err := json.Marshal(body)
 	if err != nil {
 		return fmt.Errorf("json.Marshal: %w", err)
 	}
 
-	return p.send(ctx, p.topicHistory, payload.EmployeeID, body, map[string]string{
-		"event-kind":   "history",
-		"message-id":   payload.MessageID.String(),
-		"employee-id":  payload.EmployeeID,
-		"source":       p.source,
-		"content-type": "application/json",
+	return p.send(ctx, p.topicHistory, messageID.String(), message, map[string]string{
+		"event-kind": "history",
+		"source":     p.source,
 	})
 }
 

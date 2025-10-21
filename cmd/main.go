@@ -166,22 +166,22 @@ func main() {
 }
 
 func initHRProducer(kafkaConfig config.KafkaConfig) (*producer.HRProducer, error) {
-	sCfg := sarama.NewConfig()
-	sCfg.Version = sarama.V3_3_2_0
-	sCfg.Producer.Return.Successes = true
-	sCfg.Producer.RequiredAcks = sarama.WaitForAll
-	sCfg.Producer.Idempotent = true
-	sCfg.Net.MaxOpenRequests = 1
-	sCfg.Producer.Retry.Max = 5
-	sCfg.Producer.Retry.Backoff = 200 * time.Millisecond
+	saramaCfg := sarama.NewConfig()
+	saramaCfg.Version = sarama.V3_3_2_0
+	saramaCfg.Producer.Return.Successes = true
+	saramaCfg.Producer.RequiredAcks = sarama.WaitForAll
+	saramaCfg.Producer.Idempotent = true
+	saramaCfg.Net.MaxOpenRequests = 1
+	saramaCfg.Producer.Retry.Max = 5
+	saramaCfg.Producer.Retry.Backoff = 200 * time.Millisecond
 
-	sp, err := sarama.NewSyncProducer([]string{kafkaConfig.Bootstrap.Value}, sCfg)
+	syncProducer, err := sarama.NewSyncProducer([]string{kafkaConfig.Bootstrap.Value}, saramaCfg)
 	if err != nil {
 		return nil, err
 	}
 
-	hrProd := producer.NewHRProducer(
-		sp,
+	hrProducer := producer.NewHRProducer(
+		syncProducer,
 		producer.Config{
 			TopicPersonal:  kafkaConfig.Topics.Personal.Value,
 			TopicPositions: kafkaConfig.Topics.Positions.Value,
@@ -191,7 +191,7 @@ func initHRProducer(kafkaConfig config.KafkaConfig) (*producer.HRProducer, error
 		log.Logger,
 	)
 
-	return hrProd, nil
+	return hrProducer, nil
 }
 
 func waitWithTimeout(done <-chan struct{}, timeout time.Duration) {

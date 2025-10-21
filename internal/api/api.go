@@ -14,7 +14,7 @@ import (
 	"github.com/valyala/fasthttp"
 )
 
-// @title           QA Kafka Lab — HR Profiles Trainer
+// @title           QA Kafka — HR Profiles Trainer
 // @version         1.0
 // @description     Учебный стенд для QA по Kafka: отправка событий продюсером, обработка 3 консьюмерами, запись в Postgres, проверка сценариев (порядок, дубликаты, DLQ, лаги).
 //

@@ -24,9 +24,3 @@ type KafkaConfig struct {
 type ApiConfig struct {
 	Port *yamlenv.Env[int] `yaml:"port"`
 }
-
-var (
-	CorsAllowHeaders = "Access-Control-Allow-Origin, Access-Control-Allow-Methods, Access-Control-Max-Age, Access-Control-Allow-Credentials, Content-Type, Authorization, Origin, X-Requested-With , Accept"
-	CorsAllowMethods = "HEAD, GET, POST, PUT, DELETE, OPTIONS"
-	CorsAllowOrigin  = "*"
-)

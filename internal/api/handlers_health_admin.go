@@ -13,7 +13,7 @@ func (s *Service) healthHandler(ctx *fasthttp.RequestCtx) {
 	ok(ctx, "OK")
 }
 
-// @Summary Полная очистка данных тренажёра (truncate lab.*)
+// @Summary Полная очистка данных тренажёра (truncate tables.*)
 // @Tags    Admin
 // @Success 200 {object} okResponse
 // @Failure 500 {object} errorResponse

@@ -2,8 +2,8 @@ package consumer
 
 import (
 	"fmt"
-	"github.com/Artexxx/HR-Kafka-QA/internal/dto"
 
+	"github.com/Artexxx/HR-Kafka-QA/internal/dto"
 	"github.com/IBM/sarama"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
@@ -29,20 +29,20 @@ func NewPersonalRunner(
 	return newRunner(bootstrap, groupID, topic, h, log)
 }
 
-func (h *handler) processPersonal(sess sarama.ConsumerGroupSession, msg *sarama.ConsumerMessage, event Envelope[PersonalPayload]) bool {
+func (h *handler) processPersonal(sess sarama.ConsumerGroupSession, msg *sarama.ConsumerMessage, messageId uuid.UUID, personal PersonalPayload) bool {
 	ctx := sess.Context()
 
-	if event.MessageID != uuid.Nil {
+	if messageId == uuid.Nil {
 		h.toDLQ(ctx, msg, "missing required field message_id")
 		return h.commitOnDLQ
 	}
 
-	if event.EmployeeID == "" {
+	if personal.EmployeeID == "" {
 		h.toDLQ(ctx, msg, "missing required field employee_id")
 		return h.commitOnDLQ
 	}
 
-	exists, err := h.events.ExistsMessage(ctx, event.MessageID)
+	exists, err := h.events.ExistsMessage(ctx, messageId)
 	if err != nil {
 		h.toDLQ(ctx, msg, fmt.Sprintf("events.ExistsMessage: %v", err))
 		return h.commitOnDLQ
@@ -50,41 +50,40 @@ func (h *handler) processPersonal(sess sarama.ConsumerGroupSession, msg *sarama.
 
 	if exists {
 		h.log.Info().
-			Str("message_id", event.MessageID.String()).
-			Str("employee_id", event.EmployeeID).
+			Str("message_id", messageId.String()).
+			Str("employee_id", personal.EmployeeID).
 			Msg("duplicate message, skip (idempotency)")
 		return true // коммитим — событие уже обработано ранее
 	}
 
-	if verr := validatePersonal(event.Payload); verr != "" {
+	if verr := validatePersonal(personal); verr != "" {
 		h.toDLQ(ctx, msg, verr)
 		return h.commitOnDLQ
 	}
 
 	if err := h.events.InsertEvent(ctx, dto.KafkaEvent{
-		MessageID: event.MessageID,
+		MessageID: messageId,
 		Topic:     msg.Topic,
-		Key:       string(msg.Key),
 		Partition: int(msg.Partition),
 		Offset:    msg.Offset,
 		Payload:   append([]byte(nil), msg.Value...),
 	}); err != nil {
-		h.toDLQ(ctx, msg, fmt.Sprintf("events.InsertEvent: db error insert event: %s", err.Error()))
+		h.toDLQ(ctx, msg, fmt.Sprintf("events.InsertEvent: db error insert personal: %s", err.Error()))
 
 		return h.commitOnDLQ
 	}
 
 	var (
-		first = event.Payload.FirstName
-		last  = event.Payload.LastName
-		bdate = event.Payload.BirthDate
-		email = event.Payload.Contacts.Email
-		phone = event.Payload.Contacts.Phone
+		first = personal.FirstName
+		last  = personal.LastName
+		bdate = personal.BirthDate
+		email = personal.Contacts.Email
+		phone = personal.Contacts.Phone
 	)
 
 	// приводим к DTO
 	employee := dto.EmployeeProfile{
-		EmployeeID: event.EmployeeID,
+		EmployeeID: personal.EmployeeID,
 	}
 	if first != "" {
 		employee.FirstName = &first

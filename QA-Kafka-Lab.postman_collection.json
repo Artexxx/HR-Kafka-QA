@@ -1,6 +1,6 @@
 {
   "info": {
-    "name": "QA Kafka Lab — HR Profiles Trainer",
+    "name": "QA Kafka — HR Profiles Trainer",
     "_postman_id": "d882be68-d9c2-47ce-b88d-5c7e6cffabf2",
     "description": "Postman коллекция для CRUD по Postgres и продюсер-эндпоинтов.\nБазовый URL настраивается через переменную `baseUrl`.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"

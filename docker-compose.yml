@@ -134,6 +134,9 @@ services:
       # uncomment this if you want to be able to change the configuration of the
       # Kafka cluster from the Kafka UI
       DYNAMIC_CONFIG_ENABLED: "false"
+      AUTH_TYPE: LOGIN_FORM
+      SPRING_SECURITY_USER_NAME: admin
+      SPRING_SECURITY_USER_PASSWORD: admin
     volumes:
       - ./kafka-ui-config.yml:/etc/kafkaui/dynamic_config.yaml
 

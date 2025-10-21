@@ -13,7 +13,7 @@ CREATE TABLE "public"."kafka_dlq" ("id" bigserial NOT NULL, "topic" text NOT NUL
 -- Create index "idx_kafka_dlq_topic_received_at" to table: "kafka_dlq"
 CREATE INDEX "idx_kafka_dlq_topic_received_at" ON "public"."kafka_dlq" ("topic", "received_at" DESC);
 -- Create "kafka_events" table
-CREATE TABLE "public"."kafka_events" ("id" bigserial NOT NULL, "message_id" uuid NULL, "topic" text NOT NULL, "msg_key" text NULL, "partition" integer NULL, "offset" bigint NULL, "payload" jsonb NOT NULL, "received_at" timestamptz NULL DEFAULT now(), PRIMARY KEY ("id"));
+CREATE TABLE "public"."kafka_events" ("id" bigserial NOT NULL, "message_id" uuid NULL, "topic" text NOT NULL, "partition" integer NULL, "offset" bigint NULL, "payload" jsonb NOT NULL, "received_at" timestamptz NULL DEFAULT now(), PRIMARY KEY ("id"));
 -- Create index "idx_kafka_events_topic_received_at" to table: "kafka_events"
 CREATE INDEX "idx_kafka_events_topic_received_at" ON "public"."kafka_events" ("topic", "received_at" DESC);
 -- Create index "kafka_events_message_id_key" to table: "kafka_events"

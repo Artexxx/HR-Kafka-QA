@@ -1,5 +1,3 @@
-auth:
-  type: DISABLED
 kafka:
   clusters:
     - bootstrapServers: kafka0:29092
@@ -7,5 +5,39 @@ kafka:
       properties: { }
       readOnly: false
 rbac:
-  roles: [ ]
+  roles:
+    - name: "writers-three-topics"
+      clusters: [ "local" ]
+      # ВНИМАНИЕ: при AUTH_TYPE=LOGIN_FORM сабджекты не применятся.
+      # Ниже оставлены как заглушка — реальная привязка нужна только для OAuth/LDAP.
+      subjects:
+        # ВАЖНО: RBAC-сабджекты работают с OAuth/LDAP/JWT.
+        # Для LOGIN_FORM (basic) не матчится. Используйте один из поддерживаемых провайдеров.
+        - provider: oauth       # например, роль из вашего IdP
+          type: role
+          value: "admin"
+      permissions:
+        - resource: topic
+          value: "^(hr\\.history|hr\\.personal|hr\\.positions)$"
+          regex: true
+          actions:
+            - VIEW
+            - MESSAGES_READ
+            - MESSAGES_PRODUCE
+        - resource: clusterconfig
+          actions: [ "view" ]
+        - resource: consumer
+          value: ".*"
+          actions: [ view ]
+
+        - resource: schema
+          value: ".*"
+          actions: [ view ]
+
+        - resource: connect
+          value: ".*"
+          actions: [ view ]
+
+        - resource: acl
+          actions: [ view ]
 webclient: { }
