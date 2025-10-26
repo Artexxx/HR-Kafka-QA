@@ -36,7 +36,10 @@ func (h *handler) ConsumeClaim(sess sarama.ConsumerGroupSession, claim sarama.Co
 		messageID, err := messageIDFromKey(message)
 		if err != nil {
 			h.toDLQ(sess.Context(), message, fmt.Sprintf("error in message_id parse: %v", err))
-			sess.MarkMessage(message, "")
+			if h.commitOnDLQ {
+				sess.MarkMessage(message, "")
+			}
+			continue
 		}
 
 		switch h.kind {

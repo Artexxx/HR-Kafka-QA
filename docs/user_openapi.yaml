@@ -14,7 +14,7 @@ paths:
     post:
       tags:
         - Admin
-      summary: Полная очистка данных тренажёра (truncate lab.*)
+      summary: Полная очистка данных тренажёра (truncate tables.*)
       responses:
         "200":
           description: OK
@@ -626,8 +626,6 @@ components:
           description: Должность
           type: string
           example: Инженер по тестированию
-        updated_at:
-          type: string
     dto.EmploymentHistory:
       type: object
       properties:
@@ -635,10 +633,6 @@ components:
           description: Компания
           type: string
           example: ООО Ромашка
-        created_at:
-          description: Время создания записи
-          type: string
-          example: 2025-10-19T10:15:30Z
         employee_id:
           description: Идентификатор сотрудника
           type: string
@@ -690,8 +684,6 @@ components:
       properties:
         id:
           type: integer
-        key:
-          type: string
         message_id:
           type: string
         offset:

@@ -14,13 +14,13 @@ import (
 
 type EventsRepository interface {
 	ExistsMessage(ctx context.Context, messageID uuid.UUID) (bool, error)
-	InsertEvent(ctx context.Context, ev dto.KafkaEvent) error
+	InsertEvent(ctx context.Context, event dto.KafkaEvent) error
 	InsertDLQ(ctx context.Context, dlq dto.KafkaDLQ) error
 }
 
 type ProfileRepository interface {
-	UpsertPersonal(ctx context.Context, p dto.EmployeeProfile) error
-	UpsertPosition(ctx context.Context, p dto.EmployeeProfile) error
+	UpsertPersonal(ctx context.Context, profile dto.EmployeeProfile) error
+	UpsertPosition(ctx context.Context, profile dto.EmployeeProfile) error
 }
 
 type HistoryRepository interface {

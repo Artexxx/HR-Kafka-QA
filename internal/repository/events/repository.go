@@ -53,7 +53,7 @@ func (r *Repository) InsertEvent(ctx context.Context, event dto.KafkaEvent) erro
 INSERT INTO kafka_events
 	(topic, message_id, partition, "offset", payload, received_at)
 VALUES
-	($1, $2, $3, $4, $5::jsonb, NOW());
+	($1, $2::uuid, $3, $4, $5::jsonb, NOW());
 `
 	_, err := r.pool.Exec(ctx, query, event.Topic, event.MessageID, event.Partition, event.Offset, string(event.Payload))
 	if err != nil {

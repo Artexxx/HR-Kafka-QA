@@ -123,8 +123,7 @@ select employee_id,
 	   title,
 	   department,
 	   grade,
-	   to_char(effective_from,'YYYY-MM-DD'),
-	   to_char(updated_at, 'YYYY-MM-DD"T"HH24:MI:SSOF')
+	   to_char(effective_from,'YYYY-MM-DD')
 from employee_profile
 where employee_id = $1;
 `
@@ -147,7 +146,6 @@ where employee_id = $1;
 		&out.Department,
 		&out.Grade,
 		&effectiveFrom,
-		&out.UpdatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -174,8 +172,7 @@ select employee_id,
        title,
        department,
        grade,
-       to_char(effective_from,'YYYY-MM-DD'),
-       to_char(updated_at, 'YYYY-MM-DD"T"HH24:MI:SSOF')
+       to_char(effective_from,'YYYY-MM-DD')
 from employee_profile
 order by updated_at desc, employee_id
 `
@@ -203,7 +200,6 @@ order by updated_at desc, employee_id
 			&profile.Department,
 			&profile.Grade,
 			&effectiveFrom,
-			&profile.UpdatedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("rows.Scan: %w", err)

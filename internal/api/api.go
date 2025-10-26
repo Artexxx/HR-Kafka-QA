@@ -28,7 +28,7 @@ import (
 
 type EventsRepository interface {
 	ExistsMessage(ctx context.Context, messageID uuid.UUID) (bool, error)
-	InsertEvent(ctx context.Context, ev dto.KafkaEvent) error
+	InsertEvent(ctx context.Context, event dto.KafkaEvent) error
 	InsertDLQ(ctx context.Context, dlq dto.KafkaDLQ) error
 	ListEvents(ctx context.Context) ([]dto.KafkaEvent, error)
 	ListDLQ(ctx context.Context) ([]dto.KafkaDLQ, error)
@@ -36,14 +36,14 @@ type EventsRepository interface {
 }
 
 type ProfileRepository interface {
-	Create(ctx context.Context, p dto.EmployeeProfile) error
-	Update(ctx context.Context, p dto.EmployeeProfile) error
+	Create(ctx context.Context, profile dto.EmployeeProfile) error
+	Update(ctx context.Context, profile dto.EmployeeProfile) error
 	Delete(ctx context.Context, employeeID string) error
 	GetProfile(ctx context.Context, employeeID string) (*dto.EmployeeProfile, error)
 	ListProfiles(ctx context.Context) ([]dto.EmployeeProfile, error)
 
-	UpsertPersonal(ctx context.Context, p dto.EmployeeProfile) error
-	UpsertPosition(ctx context.Context, p dto.EmployeeProfile) error
+	UpsertPersonal(ctx context.Context, profile dto.EmployeeProfile) error
+	UpsertPosition(ctx context.Context, profile dto.EmployeeProfile) error
 }
 
 type HistoryRepository interface {

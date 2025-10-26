@@ -103,8 +103,7 @@ select id,
 	   position,
 	   to_char(period_from,'YYYY-MM-DD'),
 	   to_char(period_to,'YYYY-MM-DD'),
-	   stack,
-	   created_at
+	   stack
 from employment_history
 where employee_id = $1
 order by id desc
@@ -119,7 +118,7 @@ order by id desc
 	for rows.Next() {
 		var history dto.EmploymentHistory
 
-		err = rows.Scan(&history.ID, &history.EmployeeID, &history.Company, &history.Position, &history.PeriodFrom, &history.PeriodTo, &history.Stack, &history.CreatedAt)
+		err = rows.Scan(&history.ID, &history.EmployeeID, &history.Company, &history.Position, &history.PeriodFrom, &history.PeriodTo, &history.Stack)
 		if err != nil {
 			return nil, fmt.Errorf("rows.Scan: %w", err)
 		}
@@ -142,15 +141,14 @@ select id,
 	   position,
 	   to_char(period_from,'YYYY-MM-DD'),
 	   to_char(period_to,'YYYY-MM-DD'),
-	   stack,
-	   created_at
+	   stack
 from employment_history
 where id = $1;
 `
 	row := r.pool.QueryRow(ctx, query, id)
 
 	var history dto.EmploymentHistory
-	err := row.Scan(&history.ID, &history.EmployeeID, &history.Company, &history.Position, &history.PeriodFrom, &history.PeriodTo, &history.Stack, &history.CreatedAt)
+	err := row.Scan(&history.ID, &history.EmployeeID, &history.Company, &history.Position, &history.PeriodFrom, &history.PeriodTo, &history.Stack)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, dto.ErrNotFound

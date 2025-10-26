@@ -11,7 +11,7 @@
     "swagger": "2.0",
     "info": {
         "description": "Учебный стенд для QA по Kafka: отправка событий продюсером, обработка 3 консьюмерами, запись в Postgres, проверка сценариев (порядок, дубликаты, DLQ, лаги).",
-        "title": "QA Kafka Lab — HR Profiles Trainer",
+        "title": "QA Kafka — HR Profiles Trainer",
         "contact": {},
         "license": {
             "name": "MIT",
@@ -26,7 +26,7 @@
                 "tags": [
                     "Admin"
                 ],
-                "summary": "Полная очистка данных тренажёра (truncate lab.*)",
+                "summary": "Полная очистка данных тренажёра (truncate tables.*)",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -841,9 +841,6 @@
                     "description": "Должность",
                     "type": "string",
                     "example": "Инженер по тестированию"
-                },
-                "updated_at": {
-                    "type": "string"
                 }
             }
         },
@@ -854,11 +851,6 @@
                     "description": "Компания",
                     "type": "string",
                     "example": "ООО Ромашка"
-                },
-                "created_at": {
-                    "description": "Время создания записи",
-                    "type": "string",
-                    "example": "2025-10-19T10:15:30Z"
                 },
                 "employee_id": {
                     "description": "Идентификатор сотрудника",
@@ -930,9 +922,6 @@
             "properties": {
                 "id": {
                     "type": "integer"
-                },
-                "key": {
-                    "type": "string"
                 },
                 "message_id": {
                     "type": "string"
