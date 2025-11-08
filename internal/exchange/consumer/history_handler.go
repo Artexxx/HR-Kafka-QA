@@ -1,6 +1,7 @@
 package consumer
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/Artexxx/HR-Kafka-QA/internal/dto"
@@ -39,6 +40,18 @@ func (h *handler) processHistory(sess sarama.ConsumerGroupSession, msg *sarama.C
 
 	if history.EmployeeID == "" {
 		h.toDLQ(ctx, msg, "missing required field employee_id")
+		return h.commitOnDLQ
+	}
+
+	if _, err := h.profiles.GetProfile(ctx, history.EmployeeID); err != nil {
+		if errors.Is(err, dto.ErrNotFound) {
+			h.toDLQ(ctx, msg, fmt.Sprintf("employee_id=%s not found: create employee profile first", history.EmployeeID))
+		}
+
+		if !errors.Is(err, dto.ErrNotFound) {
+			h.toDLQ(ctx, msg, fmt.Sprintf("profiles.GetProfile: db error get profile: %v", err))
+		}
+
 		return h.commitOnDLQ
 	}
 
