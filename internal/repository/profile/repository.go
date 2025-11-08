@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -29,21 +30,21 @@ func NewRepository(pool PgxPoolIface) *Repository {
 func (r *Repository) Create(ctx context.Context, p dto.EmployeeProfile) error {
 	query := `
 insert into employee_profile
-  (employee_id, first_name, last_name, birth_date, email, phone, title, department, grade, effective_from, updated_at)
+  (employee_id, first_name, last_name, birth_date, email, phone, title, department, grade, effective_from)
 values
-  (@employee_id, @first_name, @last_name, nullif(@birth_date, '')::date, @email, @phone, @title, @department, @grade, nullif(@effective_from, '')::date, now());
+  (@employee_id, @first_name, @last_name, @birth_date::date, @email, @phone, @title, @department, @grade, @effective_from::date);
 `
 	args := pgx.NamedArgs{
 		"employee_id":    p.EmployeeID,
 		"first_name":     p.FirstName,
 		"last_name":      p.LastName,
-		"birth_date":     strptr(p.BirthDate),
+		"birth_date":     p.BirthDate,
 		"email":          p.Email,
 		"phone":          p.Phone,
 		"title":          p.Title,
 		"department":     p.Department,
 		"grade":          p.Grade,
-		"effective_from": strptr(p.EffectiveFrom),
+		"effective_from": p.EffectiveFrom,
 	}
 
 	_, err := r.pool.Exec(ctx, query, args)
@@ -60,37 +61,58 @@ values
 }
 
 func (r *Repository) Update(ctx context.Context, p dto.EmployeeProfile) error {
-	query := `
-update employee_profile set
-  first_name     = @first_name,
-  last_name      = @last_name,
-  birth_date     = nullif(@birth_date,'')::date,
-  email          = @email,
-  phone          = @phone,
-  title          = @title,
-  department     = @department,
-  grade          = @grade,
-  effective_from = nullif(@effective_from,'')::date,
-  updated_at     = now()
-where employee_id = @employee_id;
-`
+	set := make([]string, 0, 10)
 	args := pgx.NamedArgs{
-		"employee_id":    p.EmployeeID,
-		"first_name":     p.FirstName,
-		"last_name":      p.LastName,
-		"birth_date":     strptr(p.BirthDate),
-		"email":          p.Email,
-		"phone":          p.Phone,
-		"title":          p.Title,
-		"department":     p.Department,
-		"grade":          p.Grade,
-		"effective_from": strptr(p.EffectiveFrom),
+		"employee_id": p.EmployeeID,
 	}
+
+	// обязательные (string) — всегда
+	set = append(set, "first_name = @first_name")
+	args["first_name"] = p.FirstName
+
+	set = append(set, "last_name = @last_name")
+	args["last_name"] = p.LastName
+
+	set = append(set, "birth_date = @birth_date::date")
+	args["birth_date"] = p.BirthDate
+
+	set = append(set, "email = @email")
+	args["email"] = p.Email
+
+	set = append(set, "phone = @phone")
+	args["phone"] = p.Phone
+
+	// опциональные — только если присланы
+	if p.Title != nil {
+		set = append(set, "title = @title")
+		args["title"] = *p.Title
+	}
+	if p.Department != nil {
+		set = append(set, "department = @department")
+		args["department"] = *p.Department
+	}
+	if p.Grade != nil {
+		set = append(set, "grade = @grade")
+		args["grade"] = *p.Grade
+	}
+	if p.EffectiveFrom != nil {
+		set = append(set, "effective_from = @effective_from::date")
+		args["effective_from"] = *p.EffectiveFrom
+	}
+
+	set = append(set, "updated_at = now()")
+
+	query := fmt.Sprintf(`
+UPDATE employee_profile
+SET %s
+WHERE employee_id = @employee_id;
+`, strings.Join(set, ", "))
 
 	tag, err := r.pool.Exec(ctx, query, args)
 	if err != nil {
 		return fmt.Errorf("pool.Exec: %w", err)
 	}
+
 	if tag.RowsAffected() == 0 {
 		return dto.ErrNotFound
 	}
@@ -131,32 +153,30 @@ where employee_id = $1;
 
 	var (
 		out           dto.EmployeeProfile
-		birthDate     *string
+		title         *string
+		department    *string
+		grade         *string
 		effectiveFrom *string
 	)
 
-	err := row.Scan(
+	if err := row.Scan(
 		&out.EmployeeID,
 		&out.FirstName,
 		&out.LastName,
-		&birthDate,
+		&out.BirthDate,
 		&out.Email,
 		&out.Phone,
-		&out.Title,
-		&out.Department,
-		&out.Grade,
+		&title,
+		&department,
+		&grade,
 		&effectiveFrom,
-	)
-	if err != nil {
+	); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, dto.ErrNotFound
 		}
 
 		return nil, fmt.Errorf("row.Scan: %w", err)
 	}
-
-	out.BirthDate = birthDate
-	out.EffectiveFrom = effectiveFrom
 
 	return &out, nil
 }
@@ -184,30 +204,30 @@ order by updated_at desc, employee_id
 
 	var out []dto.EmployeeProfile
 	for rows.Next() {
-		var (
-			profile                  dto.EmployeeProfile
-			birthDate, effectiveFrom *string
-		)
+		var p dto.EmployeeProfile
+		var title, department, grade, effectiveFrom *string
 
-		err = rows.Scan(
-			&profile.EmployeeID,
-			&profile.FirstName,
-			&profile.LastName,
-			&birthDate,
-			&profile.Email,
-			&profile.Phone,
-			&profile.Title,
-			&profile.Department,
-			&profile.Grade,
+		if err := rows.Scan(
+			&p.EmployeeID,
+			&p.FirstName,
+			&p.LastName,
+			&p.BirthDate,
+			&p.Email,
+			&p.Phone,
+			&title,
+			&department,
+			&grade,
 			&effectiveFrom,
-		)
-		if err != nil {
+		); err != nil {
 			return nil, fmt.Errorf("rows.Scan: %w", err)
 		}
 
-		profile.BirthDate = birthDate
-		profile.EffectiveFrom = effectiveFrom
-		out = append(out, profile)
+		p.Title = title
+		p.Department = department
+		p.Grade = grade
+		p.EffectiveFrom = effectiveFrom
+
+		out = append(out, p)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("rows.Err: %w", err)
@@ -232,7 +252,7 @@ on conflict (employee_id) do update set
 		"employee_id": p.EmployeeID,
 		"first_name":  p.FirstName,
 		"last_name":   p.LastName,
-		"birth_date":  strptr(p.BirthDate),
+		"birth_date":  p.BirthDate,
 		"email":       p.Email,
 		"phone":       p.Phone,
 	}
@@ -260,7 +280,7 @@ on conflict (employee_id) do update set
 		"title":          p.Title,
 		"department":     p.Department,
 		"grade":          p.Grade,
-		"effective_from": strptr(p.EffectiveFrom),
+		"effective_from": p.EffectiveFrom,
 	}
 
 	if _, err := r.pool.Exec(ctx, query, args); err != nil {
@@ -268,11 +288,4 @@ on conflict (employee_id) do update set
 	}
 
 	return nil
-}
-
-func strptr(p *string) string {
-	if p == nil {
-		return ""
-	}
-	return *p
 }

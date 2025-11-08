@@ -8,14 +8,14 @@ import (
 )
 
 var (
-	ErrMessageIDRequired = errors.New("поле message_id не передано")
+	ErrMessageIDRequired = errors.New("required field 'message_id'")
 
-	ErrHistoryIDRequired = errors.New("поле history_id не передано")
-	ErrHistoryNotFound   = errors.New("история не найдена")
+	ErrHistoryIDRequired = errors.New("required field 'history_id'")
+	ErrHistoryNotFound   = errors.New("history not found")
 
-	ErrEmployeeIDRequired   = errors.New("поле employee id не передано")
-	ErrProfileNotFound      = errors.New("профиль сотрудника не найден")
-	ErrProfileAlreadyExists = errors.New("профиль сотрудника уже существует")
+	ErrEmployeeIDRequired   = errors.New("required field 'employee_id'")
+	ErrProfileNotFound      = errors.New("employee not found")
+	ErrProfileAlreadyExists = errors.New("employee already exists")
 )
 
 type okResponse struct {

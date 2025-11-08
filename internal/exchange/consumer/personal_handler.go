@@ -73,32 +73,13 @@ func (h *handler) processPersonal(sess sarama.ConsumerGroupSession, msg *sarama.
 		return h.commitOnDLQ
 	}
 
-	var (
-		first = personal.FirstName
-		last  = personal.LastName
-		bdate = personal.BirthDate
-		email = personal.Contacts.Email
-		phone = personal.Contacts.Phone
-	)
-
-	// приводим к DTO
 	employee := dto.EmployeeProfile{
 		EmployeeID: personal.EmployeeID,
-	}
-	if first != "" {
-		employee.FirstName = &first
-	}
-	if last != "" {
-		employee.LastName = &last
-	}
-	if bdate != "" {
-		employee.BirthDate = &bdate
-	}
-	if email != "" {
-		employee.Email = &email
-	}
-	if phone != "" {
-		employee.Phone = &phone
+		FirstName:  personal.FirstName,
+		LastName:   personal.LastName,
+		BirthDate:  personal.BirthDate,
+		Email:      personal.Contacts.Email,
+		Phone:      personal.Contacts.Phone,
 	}
 
 	if err := h.profiles.UpsertPersonal(ctx, employee); err != nil {

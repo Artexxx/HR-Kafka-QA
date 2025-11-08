@@ -13,10 +13,10 @@ type PersonalPayload struct {
 
 type PositionPayload struct {
 	EmployeeID    string `json:"employee_id"`
-	Title         string `json:"title"`
-	Department    string `json:"department"`
-	Grade         string `json:"grade"`
-	EffectiveFrom string `json:"effective_from"`
+	Title         string `json:"title,omitempty"`
+	Department    string `json:"department,omitempty"`
+	Grade         string `json:"grade,omitempty"`
+	EffectiveFrom string `json:"effective_from,omitempty"`
 }
 
 type HistoryPayload struct {

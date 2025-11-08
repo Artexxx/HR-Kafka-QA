@@ -117,6 +117,7 @@
         },
         "/history": {
             "post": {
+                "description": "Варианты 400 (VALIDATION ERROR):\n- required: employee_id, company, period_from, period_to\n- invalid value: period_from, period_to, period (to \u003c from)",
                 "consumes": [
                     "application/json"
                 ],
@@ -134,13 +135,13 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.EmploymentHistory"
+                            "$ref": "#/definitions/api.employmentHistoryRequest"
                         }
                     }
                 ],
                 "responses": {
                     "400": {
-                        "description": "Отсутствует employee_id",
+                        "description": "VALIDATION ERROR — ошибки валидации входных данных",
                         "schema": {
                             "$ref": "#/definitions/api.errorResponse"
                         }
@@ -180,13 +181,7 @@
                         }
                     },
                     "400": {
-                        "description": "Отсутствует employee_id",
-                        "schema": {
-                            "$ref": "#/definitions/api.errorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Сотрудник не найден",
+                        "description": "required field 'employee_id'",
                         "schema": {
                             "$ref": "#/definitions/api.errorResponse"
                         }
@@ -202,6 +197,7 @@
         },
         "/history/{id}": {
             "put": {
+                "description": "Варианты 400 (VALIDATION ERROR):\n- required: id, employee_id, company, period_from, period_to\n- invalid value: id, period_from, period_to, period (to \u003c from)",
                 "consumes": [
                     "application/json"
                 ],
@@ -213,6 +209,13 @@
                 ],
                 "summary": "Обновить запись истории",
                 "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID записи истории",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
                     {
                         "description": "Изменяемые поля",
                         "name": "request",
@@ -231,7 +234,7 @@
                         }
                     },
                     "400": {
-                        "description": "Отсутствует id",
+                        "description": "VALIDATION ERROR — ошибки валидации входных данных",
                         "schema": {
                             "$ref": "#/definitions/api.errorResponse"
                         }
@@ -269,13 +272,13 @@
                 ],
                 "responses": {
                     "400": {
-                        "description": "Отсутствует id",
+                        "description": "required field 'id'",
                         "schema": {
                             "$ref": "#/definitions/api.errorResponse"
                         }
                     },
                     "404": {
-                        "description": "История не найдена",
+                        "description": "history not found",
                         "schema": {
                             "$ref": "#/definitions/api.errorResponse"
                         }
@@ -291,6 +294,7 @@
         },
         "/producer/history": {
             "post": {
+                "description": "Ошибки валидации консьюмера:\n- required: employee_id, company, period_from, period_to\n- invalid value: period_from, period_to, period (to \u003c from)",
                 "consumes": [
                     "application/json"
                 ],
@@ -330,6 +334,7 @@
         },
         "/producer/personal": {
             "post": {
+                "description": "Ошибки валидации консьюмера:\n- required: employee_id, first_name, birth_date, email, phone\n- invalid value: email, birth_date",
                 "consumes": [
                     "application/json"
                 ],
@@ -375,6 +380,7 @@
         },
         "/producer/position": {
             "post": {
+                "description": "Ошибки валидации консьюмера:\n- required: title, department, grade, effective_from\n- invalid: effective_from, grade in {Junior, Middle, Senior, Lead, Head}",
                 "consumes": [
                     "application/json"
                 ],
@@ -438,7 +444,7 @@
                         }
                     },
                     "500": {
-                        "description": "InternalError — внутренняя ошибка",
+                        "description": "Внутренняя ошибка",
                         "schema": {
                             "$ref": "#/definitions/api.errorResponse"
                         }
@@ -446,6 +452,7 @@
                 }
             },
             "post": {
+                "description": "Варианты 400 (VALIDATION ERROR):\n- required: employee_id, first_name, birth_date, email, phone\n- required (если присутствует): title, department, grade, effective_from\n- invalid value: email, birth_date, effective_from (если присутствует)\n- invalid enum (если присутствует): grade in {Junior, Middle, Senior, Lead, Head}",
                 "consumes": [
                     "application/json"
                 ],
@@ -475,13 +482,13 @@
                         }
                     },
                     "400": {
-                        "description": "Отсутствует employee_id",
+                        "description": "VALIDATION ERROR — ошибки валидации входных данных",
                         "schema": {
                             "$ref": "#/definitions/api.errorResponse"
                         }
                     },
                     "409": {
-                        "description": "Профиль уже существует",
+                        "description": "employee already exists",
                         "schema": {
                             "$ref": "#/definitions/api.errorResponse"
                         }
@@ -520,14 +527,8 @@
                             "$ref": "#/definitions/dto.EmployeeProfile"
                         }
                     },
-                    "400": {
-                        "description": "Отсутствует employee_id",
-                        "schema": {
-                            "$ref": "#/definitions/api.errorResponse"
-                        }
-                    },
                     "404": {
-                        "description": "Сотрудник не найден",
+                        "description": "employee not found",
                         "schema": {
                             "$ref": "#/definitions/api.errorResponse"
                         }
@@ -541,6 +542,7 @@
                 }
             },
             "put": {
+                "description": "Варианты 400 (VALIDATION ERROR):\n- required: employee_id, first_name, birth_date, email, phone\n- required (если присутствует): title, department, grade, effective_from\n- invalid value: email, birth_date, effective_from (если присутствует)\n- invalid enum (если присутствует): grade in {Junior, Middle, Senior, Lead, Head}",
                 "consumes": [
                     "application/json"
                 ],
@@ -565,7 +567,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.EmployeeProfile"
+                            "$ref": "#/definitions/api.employeeProfileReq"
                         }
                     }
                 ],
@@ -577,13 +579,13 @@
                         }
                     },
                     "400": {
-                        "description": "Отсутствует employee_id",
+                        "description": "VALIDATION ERROR — ошибки валидации входных данных",
                         "schema": {
                             "$ref": "#/definitions/api.errorResponse"
                         }
                     },
                     "404": {
-                        "description": "Сотрудник не найден",
+                        "description": "employee not found",
                         "schema": {
                             "$ref": "#/definitions/api.errorResponse"
                         }
@@ -621,13 +623,13 @@
                         }
                     },
                     "400": {
-                        "description": "Отсутствует employee_id",
+                        "description": "required field 'employee_id'",
                         "schema": {
                             "$ref": "#/definitions/api.errorResponse"
                         }
                     },
                     "404": {
-                        "description": "Сотрудник не найден",
+                        "description": "employee not found",
                         "schema": {
                             "$ref": "#/definitions/api.errorResponse"
                         }
@@ -643,6 +645,98 @@
         }
     },
     "definitions": {
+        "api.employeeProfileReq": {
+            "type": "object",
+            "properties": {
+                "birth_date": {
+                    "description": "Дата рождения в формате YYYY-MM-DD",
+                    "type": "string",
+                    "example": "1994-06-12"
+                },
+                "department": {
+                    "description": "Подразделение/отдел",
+                    "type": "string",
+                    "example": "Отдел качества"
+                },
+                "effective_from": {
+                    "description": "Дата вступления изменений в силу (YYYY-MM-DD)",
+                    "type": "string",
+                    "example": "2025-10-01"
+                },
+                "email": {
+                    "description": "Корпоративная/личная почта сотрудника",
+                    "type": "string",
+                    "example": "anna@mail.ru"
+                },
+                "first_name": {
+                    "description": "Имя сотрудника",
+                    "type": "string",
+                    "example": "Анна"
+                },
+                "grade": {
+                    "description": "Грейд (Junior, Middle, Senior или другой)",
+                    "type": "string",
+                    "example": "Middle"
+                },
+                "last_name": {
+                    "description": "Фамилия сотрудника",
+                    "type": "string",
+                    "example": "Иванова"
+                },
+                "phone": {
+                    "description": "Телефон",
+                    "type": "string",
+                    "example": "+7 916 123-45-67"
+                },
+                "title": {
+                    "description": "Должность",
+                    "type": "string",
+                    "example": "Инженер по тестированию"
+                }
+            }
+        },
+        "api.employmentHistoryRequest": {
+            "type": "object",
+            "properties": {
+                "company": {
+                    "description": "Компания",
+                    "type": "string",
+                    "example": "ООО Ромашка"
+                },
+                "employee_id": {
+                    "description": "Идентификатор сотрудника",
+                    "type": "string",
+                    "example": "e-1024"
+                },
+                "period_from": {
+                    "description": "Дата начала периода занятости (YYYY-MM-DD)",
+                    "type": "string",
+                    "example": "2022-07-01"
+                },
+                "period_to": {
+                    "description": "Дата окончания периода занятости (YYYY-MM-DD)",
+                    "type": "string",
+                    "example": "2025-09-30"
+                },
+                "position": {
+                    "description": "Должность",
+                    "type": "string",
+                    "example": "Инженер QA"
+                },
+                "stack": {
+                    "description": "Технологический стек (список строк)",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "Python",
+                        "Pytest",
+                        "PostgreSQL"
+                    ]
+                }
+            }
+        },
         "api.errorResponse": {
             "type": "object",
             "properties": {

@@ -30,7 +30,6 @@ func NewHistoryRunner(
 }
 
 func (h *handler) processHistory(sess sarama.ConsumerGroupSession, msg *sarama.ConsumerMessage, messageId uuid.UUID, history HistoryPayload) bool {
-
 	ctx := sess.Context()
 
 	if messageId == uuid.Nil {
@@ -71,15 +70,11 @@ func (h *handler) processHistory(sess sarama.ConsumerGroupSession, msg *sarama.C
 
 	hDto := dto.EmploymentHistory{
 		EmployeeID: history.EmployeeID,
-		Company:    &history.Company,
-		Position:   nil,
-		PeriodFrom: &history.Period.From,
-		PeriodTo:   &history.Period.To,
-		Stack:      append([]string(nil), history.Stack...),
-	}
-	if history.Position != "" {
-		pos := history.Position
-		hDto.Position = &pos
+		Company:    history.Company,
+		Position:   history.Position,
+		PeriodFrom: history.Period.From,
+		PeriodTo:   history.Period.To,
+		Stack:      history.Stack,
 	}
 
 	if err := h.history.Insert(ctx, hDto); err != nil {

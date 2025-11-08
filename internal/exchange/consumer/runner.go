@@ -20,6 +20,7 @@ type EventsRepository interface {
 
 type ProfileRepository interface {
 	UpsertPersonal(ctx context.Context, profile dto.EmployeeProfile) error
+	GetProfile(ctx context.Context, employeeID string) (*dto.EmployeeProfile, error)
 	UpsertPosition(ctx context.Context, profile dto.EmployeeProfile) error
 }
 

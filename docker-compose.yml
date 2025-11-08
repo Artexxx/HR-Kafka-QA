@@ -163,6 +163,11 @@ services:
             default-group: limited-reader
     
             basic-auth:
+              - username: student
+                password: "8b1f4ab806281896b34b0528264f90ed0bcfb2610d55974a1e87d355cf962ab0"
+                groups:
+                  - limited-reader     
+                  - hr-producer  
               - username: admin
                 password: "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918"
                 groups:

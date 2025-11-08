@@ -1,6 +1,7 @@
 package consumer
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/Artexxx/HR-Kafka-QA/internal/dto"
@@ -41,6 +42,18 @@ func (h *handler) processPosition(sess sarama.ConsumerGroupSession, msg *sarama.
 		return h.commitOnDLQ
 	}
 
+	if _, err := h.profiles.GetProfile(ctx, position.EmployeeID); err != nil {
+		if errors.Is(err, dto.ErrNotFound) {
+			h.toDLQ(ctx, msg, fmt.Sprintf("employee_id=%s not found: create employee profile first", position.EmployeeID))
+		}
+
+		if !errors.Is(err, dto.ErrNotFound) {
+			h.toDLQ(ctx, msg, fmt.Sprintf("profiles.GetProfile: db error get profile: %v", err))
+		}
+
+		return h.commitOnDLQ
+	}
+
 	exists, err := h.events.ExistsMessage(ctx, messageId)
 	if err != nil {
 		h.toDLQ(ctx, msg, fmt.Sprintf("events.ExistsMessage: %v", err))
@@ -69,28 +82,12 @@ func (h *handler) processPosition(sess sarama.ConsumerGroupSession, msg *sarama.
 		return h.commitOnDLQ
 	}
 
-	var (
-		title = position.Title
-		dept  = position.Department
-		grade = position.Grade
-		eff   = position.EffectiveFrom
-	)
-
 	payload := dto.EmployeeProfile{
-		EmployeeID: position.EmployeeID,
-	}
-
-	if title != "" {
-		payload.Title = &title
-	}
-	if dept != "" {
-		payload.Department = &dept
-	}
-	if grade != "" {
-		payload.Grade = &grade
-	}
-	if eff != "" {
-		payload.EffectiveFrom = &eff
+		EmployeeID:    position.EmployeeID,
+		Title:         &position.Title,
+		Department:    &position.Department,
+		Grade:         &position.Grade,
+		EffectiveFrom: &position.EffectiveFrom,
 	}
 
 	if err := h.profiles.UpsertPosition(ctx, payload); err != nil {

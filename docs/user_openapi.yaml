@@ -82,6 +82,10 @@ paths:
                 $ref: "#/components/schemas/api.okResponse"
   /history:
     post:
+      description: |-
+        Варианты 400 (VALIDATION ERROR):
+        - required: employee_id, company, period_from, period_to
+        - invalid value: period_from, period_to, period (to < from)
       tags:
         - CRUD-History
       summary: Добавить запись в историю работы
@@ -89,12 +93,12 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/dto.EmploymentHistory"
+              $ref: "#/components/schemas/api.employmentHistoryRequest"
         description: История
         required: true
       responses:
         "400":
-          description: Отсутствует employee_id
+          description: VALIDATION ERROR — ошибки валидации входных данных
           content:
             application/json:
               schema:
@@ -125,13 +129,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/dto.EmploymentHistory"
         "400":
-          description: Отсутствует employee_id
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/api.errorResponse"
-        "404":
-          description: Сотрудник не найден
+          description: required field 'employee_id'
           content:
             application/json:
               schema:
@@ -144,9 +142,20 @@ paths:
                 $ref: "#/components/schemas/api.errorResponse"
   "/history/{id}":
     put:
+      description: |-
+        Варианты 400 (VALIDATION ERROR):
+        - required: id, employee_id, company, period_from, period_to
+        - invalid value: id, period_from, period_to, period (to < from)
       tags:
         - CRUD-History
       summary: Обновить запись истории
+      parameters:
+        - description: ID записи истории
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
       requestBody:
         content:
           application/json:
@@ -162,7 +171,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/api.okResponse"
         "400":
-          description: Отсутствует id
+          description: VALIDATION ERROR — ошибки валидации входных данных
           content:
             application/json:
               schema:
@@ -192,13 +201,13 @@ paths:
             type: integer
       responses:
         "400":
-          description: Отсутствует id
+          description: required field 'id'
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/api.errorResponse"
         "404":
-          description: История не найдена
+          description: history not found
           content:
             application/json:
               schema:
@@ -211,6 +220,10 @@ paths:
                 $ref: "#/components/schemas/api.errorResponse"
   /producer/history:
     post:
+      description: |-
+        Ошибки валидации консьюмера:
+        - required: employee_id, company, period_from, period_to
+        - invalid value: period_from, period_to, period (to < from)
       tags:
         - Producer
       summary: Публикация события в hr.history
@@ -236,6 +249,10 @@ paths:
                 $ref: "#/components/schemas/api.errorResponse"
   /producer/personal:
     post:
+      description: |-
+        Ошибки валидации консьюмера:
+        - required: employee_id, first_name, birth_date, email, phone
+        - invalid value: email, birth_date
       tags:
         - Producer
       summary: Публикация события в hr.personal
@@ -267,6 +284,10 @@ paths:
                 $ref: "#/components/schemas/api.errorResponse"
   /producer/position:
     post:
+      description: |-
+        Ошибки валидации консьюмера:
+        - required: title, department, grade, effective_from
+        - invalid: effective_from, grade in {Junior, Middle, Senior, Lead, Head}
       tags:
         - Producer
       summary: Публикация события в hr.positions
@@ -311,17 +332,32 @@ paths:
                 items:
                   $ref: "#/components/schemas/dto.EmployeeProfile"
         "500":
-          description: InternalError — внутренняя ошибка
+          description: Внутренняя ошибка
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/api.errorResponse"
     post:
+      description: >-
+        Варианты 400 (VALIDATION ERROR):
+
+        - required: employee_id, first_name, birth_date, email, phone
+
+        - required (если присутствует): title, department, grade, effective_from
+
+        - invalid value: email, birth_date, effective_from (если присутствует)
+
+        - invalid enum (если присутствует): grade in {Junior, Middle, Senior, Lead, Head}
       tags:
         - CRUD-Profiles
       summary: Создать профиль
       requestBody:
-        $ref: "#/components/requestBodies/dto.EmployeeProfile"
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/dto.EmployeeProfile"
+        description: Профиль
+        required: true
       responses:
         "200":
           description: OK
@@ -330,13 +366,13 @@ paths:
               schema:
                 $ref: "#/components/schemas/api.okResponse"
         "400":
-          description: Отсутствует employee_id
+          description: VALIDATION ERROR — ошибки валидации входных данных
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/api.errorResponse"
         "409":
-          description: Профиль уже существует
+          description: employee already exists
           content:
             application/json:
               schema:
@@ -366,14 +402,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/dto.EmployeeProfile"
-        "400":
-          description: Отсутствует employee_id
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/api.errorResponse"
         "404":
-          description: Сотрудник не найден
+          description: employee not found
           content:
             application/json:
               schema:
@@ -385,6 +415,16 @@ paths:
               schema:
                 $ref: "#/components/schemas/api.errorResponse"
     put:
+      description: >-
+        Варианты 400 (VALIDATION ERROR):
+
+        - required: employee_id, first_name, birth_date, email, phone
+
+        - required (если присутствует): title, department, grade, effective_from
+
+        - invalid value: email, birth_date, effective_from (если присутствует)
+
+        - invalid enum (если присутствует): grade in {Junior, Middle, Senior, Lead, Head}
       tags:
         - CRUD-Profiles
       summary: Обновить профиль
@@ -396,7 +436,12 @@ paths:
           schema:
             type: string
       requestBody:
-        $ref: "#/components/requestBodies/dto.EmployeeProfile"
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/api.employeeProfileReq"
+        description: Профиль
+        required: true
       responses:
         "200":
           description: OK
@@ -405,13 +450,13 @@ paths:
               schema:
                 $ref: "#/components/schemas/api.okResponse"
         "400":
-          description: Отсутствует employee_id
+          description: VALIDATION ERROR — ошибки валидации входных данных
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/api.errorResponse"
         "404":
-          description: Сотрудник не найден
+          description: employee not found
           content:
             application/json:
               schema:
@@ -441,13 +486,13 @@ paths:
               schema:
                 $ref: "#/components/schemas/api.okResponse"
         "400":
-          description: Отсутствует employee_id
+          description: required field 'employee_id'
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/api.errorResponse"
         "404":
-          description: Сотрудник не найден
+          description: employee not found
           content:
             application/json:
               schema:
@@ -464,15 +509,78 @@ servers:
     description: Swagger UI
   - url: /
 components:
-  requestBodies:
-    dto.EmployeeProfile:
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/dto.EmployeeProfile"
-      description: Профиль
-      required: true
   schemas:
+    api.employeeProfileReq:
+      type: object
+      properties:
+        birth_date:
+          description: Дата рождения в формате YYYY-MM-DD
+          type: string
+          example: 1994-06-12
+        department:
+          description: Подразделение/отдел
+          type: string
+          example: Отдел качества
+        effective_from:
+          description: Дата вступления изменений в силу (YYYY-MM-DD)
+          type: string
+          example: 2025-10-01
+        email:
+          description: Корпоративная/личная почта сотрудника
+          type: string
+          example: anna@mail.ru
+        first_name:
+          description: Имя сотрудника
+          type: string
+          example: Анна
+        grade:
+          description: Грейд (Junior, Middle, Senior или другой)
+          type: string
+          example: Middle
+        last_name:
+          description: Фамилия сотрудника
+          type: string
+          example: Иванова
+        phone:
+          description: Телефон
+          type: string
+          example: +7 916 123-45-67
+        title:
+          description: Должность
+          type: string
+          example: Инженер по тестированию
+    api.employmentHistoryRequest:
+      type: object
+      properties:
+        company:
+          description: Компания
+          type: string
+          example: ООО Ромашка
+        employee_id:
+          description: Идентификатор сотрудника
+          type: string
+          example: e-1024
+        period_from:
+          description: Дата начала периода занятости (YYYY-MM-DD)
+          type: string
+          example: 2022-07-01
+        period_to:
+          description: Дата окончания периода занятости (YYYY-MM-DD)
+          type: string
+          example: 2025-09-30
+        position:
+          description: Должность
+          type: string
+          example: Инженер QA
+        stack:
+          description: Технологический стек (список строк)
+          type: array
+          items:
+            type: string
+          example:
+            - Python
+            - Pytest
+            - PostgreSQL
     api.errorResponse:
       type: object
       properties:

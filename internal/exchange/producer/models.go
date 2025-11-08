@@ -6,8 +6,7 @@ type PersonalPayload struct {
 	FirstName  string `json:"first_name" example:"Анна"`       // Имя
 	LastName   string `json:"last_name"  example:"Иванова"`    // Фамилия
 	BirthDate  string `json:"birth_date" example:"1994-06-12"` // Дата рождения (YYYY-MM-DD)
-
-	Contacts struct {
+	Contacts   struct {
 		Email string `json:"email" example:"anna.ivanova@company.ru"` // E-mail
 		Phone string `json:"phone" example:"+7 916 123-45-67"`        // Телефон
 	} `json:"contacts" swaggertype:"object"` // Контактные данные
@@ -15,11 +14,11 @@ type PersonalPayload struct {
 
 // PositionPayload — событие о должности/позиции сотрудника
 type PositionPayload struct {
-	EmployeeID    string `json:"employee_id" example:"e-1024"`                   // Внутренний идентификатор сотрудника
-	Title         string `json:"title"        example:"Инженер по тестированию"` // Должность
-	Department    string `json:"department"   example:"Отдел качества"`          // Подразделение/отдел
-	Grade         string `json:"grade"        example:"Middle"`                  // Грейд
-	EffectiveFrom string `json:"effective_from" example:"2025-10-01"`            // Дата вступления в силу (YYYY-MM-DD)
+	EmployeeID    string `json:"employee_id" example:"e-1024"`                             // Внутренний идентификатор сотрудника
+	Title         string `json:"title,omitempty"        example:"Инженер по тестированию"` // Должность
+	Department    string `json:"department,omitempty"   example:"Отдел качества"`          // Подразделение/отдел
+	Grade         string `json:"grade,omitempty"        example:"Middle"`                  // Грейд
+	EffectiveFrom string `json:"effective_from,omitempty" example:"2025-10-01"`            // Дата вступления в силу (YYYY-MM-DD)
 }
 
 // HistoryPayload — событие об изменении/добавлении записи в историю работы

@@ -49,21 +49,11 @@ func (p *HRProducer) ProducePersonal(ctx context.Context, messageID uuid.UUID, p
 	var payload PersonalPayload
 
 	payload.EmployeeID = profile.EmployeeID
-	if profile.FirstName != nil {
-		payload.FirstName = *profile.FirstName
-	}
-	if profile.LastName != nil {
-		payload.LastName = *profile.LastName
-	}
-	if profile.BirthDate != nil {
-		payload.BirthDate = *profile.BirthDate
-	}
-	if profile.Email != nil {
-		payload.Contacts.Email = *profile.Email
-	}
-	if profile.Phone != nil {
-		payload.Contacts.Phone = *profile.Phone
-	}
+	payload.FirstName = profile.FirstName
+	payload.LastName = profile.LastName
+	payload.BirthDate = profile.BirthDate
+	payload.Contacts.Email = profile.Email
+	payload.Contacts.Phone = profile.Phone
 
 	body, err := json.Marshal(payload)
 	if err != nil {
@@ -78,20 +68,12 @@ func (p *HRProducer) ProducePersonal(ctx context.Context, messageID uuid.UUID, p
 }
 
 func (p *HRProducer) ProducePosition(ctx context.Context, messageID uuid.UUID, profile dto.EmployeeProfile) error {
-	var payload PositionPayload
-
-	payload.EmployeeID = profile.EmployeeID
-	if profile.Title != nil {
-		payload.Title = *profile.Title
-	}
-	if profile.Department != nil {
-		payload.Department = *profile.Department
-	}
-	if profile.Grade != nil {
-		payload.Grade = *profile.Grade
-	}
-	if profile.EffectiveFrom != nil {
-		payload.EffectiveFrom = *profile.EffectiveFrom
+	var payload = PositionPayload{
+		EmployeeID:    profile.EmployeeID,
+		Title:         *profile.Title,
+		Department:    *profile.Department,
+		Grade:         *profile.Grade,
+		EffectiveFrom: *profile.EffectiveFrom,
 	}
 
 	body, err := json.Marshal(payload)
@@ -110,19 +92,11 @@ func (p *HRProducer) ProduceHistory(ctx context.Context, messageID uuid.UUID, hi
 	var body HistoryPayload
 
 	body.EmployeeID = history.EmployeeID
-	if history.Company != nil {
-		body.Company = *history.Company
-	}
-	if history.Position != nil {
-		body.Position = *history.Position
-	}
-	if history.PeriodFrom != nil {
-		body.Period.From = *history.PeriodFrom
-	}
-	if history.PeriodTo != nil {
-		body.Period.To = *history.PeriodTo
-	}
-	body.Stack = append(body.Stack, history.Stack...)
+	body.Company = history.Company
+	body.Position = history.Position
+	body.Period.From = history.PeriodFrom
+	body.Period.To = history.PeriodTo
+	body.Stack = history.Stack
 
 	message, err := json.Marshal(body)
 	if err != nil {
