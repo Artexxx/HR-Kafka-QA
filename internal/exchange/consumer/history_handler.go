@@ -15,13 +15,14 @@ func NewHistoryRunner(
 	topic string,
 	groupID string,
 	events EventsRepository,
+	profiles ProfileRepository,
 	history HistoryRepository,
 	log zerolog.Logger,
 ) *Runner {
 	h := &handler{
 		kind:        kindHistory,
 		events:      events,
-		profiles:    nil,
+		profiles:    profiles,
 		history:     history,
 		log:         log.With().Str("consumer", "history").Logger(),
 		commitOnDLQ: false,

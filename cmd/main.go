@@ -85,6 +85,7 @@ func main() {
 		cfg.Kafka.Topics.History.Value,
 		"consumer_history",
 		eventsRepo,
+		profileRepo,
 		historyRepo,
 		log.Logger,
 	)
