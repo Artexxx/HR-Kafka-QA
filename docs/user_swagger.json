@@ -27,6 +27,17 @@
                     "Admin"
                 ],
                 "summary": "Полная очистка данных тренажёра (truncate tables.*)",
+                "parameters": [
+                    {
+                        "description": "Пароль",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.resetRequest"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -142,6 +153,12 @@
                 "responses": {
                     "400": {
                         "description": "VALIDATION ERROR — ошибки валидации входных данных",
+                        "schema": {
+                            "$ref": "#/definitions/api.errorResponse"
+                        }
+                    },
+                    "412": {
+                        "description": "create employee profile first",
                         "schema": {
                             "$ref": "#/definitions/api.errorResponse"
                         }
@@ -294,7 +311,7 @@
         },
         "/producer/history": {
             "post": {
-                "description": "Ошибки валидации консьюмера:\n- required: employee_id, company, period_from, period_to\n- invalid value: period_from, period_to, period (to \u003c from)",
+                "description": "Ошибки валидации консьюмера:\n- required: employee_id, company, period_from, period_to\n- invalid value: period_from, period_to, period (to \u003c from)\n- precondition: create employee profile first",
                 "consumes": [
                     "application/json"
                 ],
@@ -380,7 +397,7 @@
         },
         "/producer/position": {
             "post": {
-                "description": "Ошибки валидации консьюмера:\n- required: title, department, grade, effective_from\n- invalid: effective_from, grade in {Junior, Middle, Senior, Lead, Head}",
+                "description": "Ошибки валидации консьюмера:\n- required: title, department, grade, effective_from\n- invalid: effective_from, grade in {Junior, Middle, Senior, Lead, Head}\n- precondition: create employee profile first",
                 "consumes": [
                     "application/json"
                 ],
@@ -880,6 +897,15 @@
                     "description": "Должность",
                     "type": "string",
                     "example": "Инженер по тестированию"
+                }
+            }
+        },
+        "api.resetRequest": {
+            "type": "object",
+            "properties": {
+                "password": {
+                    "description": "пароль",
+                    "type": "string"
                 }
             }
         },

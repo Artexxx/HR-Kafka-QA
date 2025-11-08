@@ -15,6 +15,13 @@ paths:
       tags:
         - Admin
       summary: Полная очистка данных тренажёра (truncate tables.*)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/api.resetRequest"
+        description: Пароль
+        required: true
       responses:
         "200":
           description: OK
@@ -99,6 +106,12 @@ paths:
       responses:
         "400":
           description: VALIDATION ERROR — ошибки валидации входных данных
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api.errorResponse"
+        "412":
+          description: create employee profile first
           content:
             application/json:
               schema:
@@ -224,6 +237,7 @@ paths:
         Ошибки валидации консьюмера:
         - required: employee_id, company, period_from, period_to
         - invalid value: period_from, period_to, period (to < from)
+        - precondition: create employee profile first
       tags:
         - Producer
       summary: Публикация события в hr.history
@@ -288,6 +302,7 @@ paths:
         Ошибки валидации консьюмера:
         - required: title, department, grade, effective_from
         - invalid: effective_from, grade in {Junior, Middle, Senior, Lead, Head}
+        - precondition: create employee profile first
       tags:
         - Producer
       summary: Публикация события в hr.positions
@@ -691,6 +706,12 @@ components:
           description: Должность
           type: string
           example: Инженер по тестированию
+    api.resetRequest:
+      type: object
+      properties:
+        password:
+          description: пароль
+          type: string
     dto.EmployeeProfile:
       type: object
       properties:

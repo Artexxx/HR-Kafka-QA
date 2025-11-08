@@ -63,7 +63,7 @@ func (s *Service) listHistoryByEmployee(ctx *fasthttp.RequestCtx) {
 // @description Варианты 400 (VALIDATION ERROR):
 // @description - required: employee_id, company, period_from, period_to
 // @description - invalid value: period_from, period_to, period (to < from)
-// @Failure 412 {object} errorResponse "Внутренняя ошибка"
+// @Failure 412 {object} errorResponse "create employee profile first"
 // @Failure 500 {object} errorResponse "Внутренняя ошибка"
 // @Router  /history [post]
 func (s *Service) createHistory(ctx *fasthttp.RequestCtx) {

@@ -100,6 +100,7 @@ func (s *Service) producerPersonal(ctx *fasthttp.RequestCtx) {
 // @description Ошибки валидации консьюмера:
 // @description - required: title, department, grade, effective_from
 // @description - invalid: effective_from, grade in {Junior, Middle, Senior, Lead, Head}
+// @description - precondition: create employee profile first
 // @Failure 500 {object} errorResponse "Внутренняя ошибка"
 // @Router  /producer/position [post]
 func (s *Service) producerPosition(ctx *fasthttp.RequestCtx) {
@@ -146,6 +147,7 @@ func (s *Service) producerPosition(ctx *fasthttp.RequestCtx) {
 // @description Ошибки валидации консьюмера:
 // @description - required: employee_id, company, period_from, period_to
 // @description - invalid value: period_from, period_to, period (to < from)
+// @description - precondition: create employee profile first
 // @Failure 500 {object} errorResponse "Внутренняя ошибка"
 // @Router  /producer/history [post]
 func (s *Service) producerHistory(ctx *fasthttp.RequestCtx) {
