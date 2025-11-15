@@ -16,7 +16,6 @@ x-services-defaults: &services_defaults
   logging: *default-logging
 
 services:
-  # === Traefik (reverse proxy for HTTPS and subdomains) ===
   traefik:
     <<: *services_defaults
     image: traefik:latest
@@ -31,30 +30,38 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - letsencrypt:/letsencrypt
     command:
-      # EntryPoints
       - "--entrypoints.web.address=:80"
       - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
       - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
       - "--entrypoints.web.http.redirections.entrypoint.permanent=true"
       - "--entrypoints.websecure.address=:443"
       - "--entrypoints.websecure.http.tls=true"
+      - "--entrypoints.pg.address=:5432"
 
-      # Providers
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--providers.docker.network=proxy"
 
-      # ACME (Let's Encrypt, HTTP-01) — укажем валидную почту
       - "--certificatesresolvers.le.acme.email=admin@kafka-practice.ru"
       - "--certificatesresolvers.le.acme.storage=/letsencrypt/acme.json"
       - "--certificatesresolvers.le.acme.httpchallenge.entrypoint=web"
 
-      # Без дашборда и авторизаций
-      - "--api.dashboard=false"
+      - "--api.dashboard=true"
       - "--accesslog=true"
       - "--log.level=INFO"
 
-  # === APP ===
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.kafka-practice.ru`)"
+      - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.tls.certresolver=le"
+      - "traefik.http.routers.traefik.service=api@internal"
+
+      - "traefik.http.middlewares.ratelimit.rate=5"
+      - "traefik.http.middlewares.ratelimit.burst=20"
+      - "traefik.http.middlewares.ratelimit.period=1s"
+      - "traefik.http.routers.api.middlewares=ratelimit"
+
   app:
     <<: *services_defaults
     container_name: qa-app
@@ -63,9 +70,9 @@ services:
     volumes:
       - ./:/app
     ports:
-      - "8080:8080"   # оставляем как сейчас (прямой доступ)
+      - "8080:8080"
     expose:
-      - "8080"        # внутренний порт для Traefik
+      - "8080"
     tty: true
     depends_on:
       postgres:
@@ -80,7 +87,6 @@ services:
       - "traefik.http.routers.app.tls.certresolver=le"
       - "traefik.http.services.app.loadbalancer.server.port=8080"
 
-  # === Postgres (оставляем как есть) ===
   postgres:
     <<: *services_defaults
     image: postgres:13.3
@@ -90,7 +96,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "5432:5432"   # прямой доступ не трогаем
+      - "5432:5432"
     volumes:
       - postgres-dev:/var/lib/postgresql/data
     healthcheck:
@@ -102,11 +108,9 @@ services:
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.akhq.rule=Host(`db.kafka-practice.ru`)"
-      - "traefik.http.routers.akhq.entrypoints=websecure"
-      - "traefik.http.routers.akhq.tls.certresolver=le"
-      - "traefik.http.services.akhq.loadbalancer.server.port=5432"
-
+      - "traefik.tcp.routers.pg.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.pg.entrypoints=pg"
+      - "traefik.tcp.services.pg.loadbalancer.server.port=5432"
   migrator:
     <<: *services_defaults
     image: arigaio/atlas:latest-community
@@ -193,13 +197,12 @@ services:
       kafka-topics --bootstrap-server kafka0:29092 --list
       "
 
-  # === AKHQ (Kafka UI) ===
   akhq:
     <<: *services_defaults
     image: tchiotludo/akhq:latest
     container_name: qa-akhq
     ports:
-      - "8085:8080"   # оставляем как сейчас (прямой доступ)
+      - "8085:8080"
     environment:
       AKHQ_CONFIGURATION: |
         micronaut:

@@ -1,4 +1,3 @@
-# Dockerfile
 FROM arigaio/atlas:latest AS atlas
 
 FROM alpine:latest

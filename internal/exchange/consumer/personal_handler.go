@@ -23,7 +23,7 @@ func NewPersonalRunner(
 		profiles:    profiles,
 		history:     nil,
 		log:         log.With().Str("consumer", "personal").Logger(),
-		commitOnDLQ: false,
+		commitOnDLQ: true,
 	}
 
 	return newRunner(bootstrap, groupID, topic, h, log)
@@ -53,7 +53,7 @@ func (h *handler) processPersonal(sess sarama.ConsumerGroupSession, msg *sarama.
 			Str("message_id", messageId.String()).
 			Str("employee_id", personal.EmployeeID).
 			Msg("duplicate message, skip (idempotency)")
-		return true // коммитим — событие уже обработано ранее
+		return true
 	}
 
 	if verr := validatePersonal(personal); verr != "" {

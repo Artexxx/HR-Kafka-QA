@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 set -euo pipefail
 
 export POSTGRRES_DSN=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=${POSTGRES_SSL_MODE}

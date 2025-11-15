@@ -25,7 +25,7 @@ func NewHistoryRunner(
 		profiles:    profiles,
 		history:     history,
 		log:         log.With().Str("consumer", "history").Logger(),
-		commitOnDLQ: false,
+		commitOnDLQ: true,
 	}
 
 	return newRunner(bootstrap, groupID, topic, h, log)

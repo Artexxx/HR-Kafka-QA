@@ -1,3 +1,5 @@
+version: "3.9"
+
 name: qa-local
 
 x-logging: &default-logging
@@ -13,9 +15,53 @@ x-services-defaults: &services_defaults
     - internal
   logging: *default-logging
 
-version: "3.9"
-
 services:
+  traefik:
+    <<: *services_defaults
+    image: traefik:latest
+    container_name: traefik
+    restart: unless-stopped
+    networks:
+      - proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - letsencrypt:/letsencrypt
+    command:
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--entrypoints.web.http.redirections.entrypoint.permanent=true"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.websecure.http.tls=true"
+      - "--entrypoints.pg.address=:5432"
+
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=proxy"
+
+      - "--certificatesresolvers.le.acme.email=admin@kafka-practice.ru"
+      - "--certificatesresolvers.le.acme.storage=/letsencrypt/acme.json"
+      - "--certificatesresolvers.le.acme.httpchallenge.entrypoint=web"
+
+      - "--api.dashboard=true"
+      - "--accesslog=true"
+      - "--log.level=INFO"
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.kafka-practice.ru`)"
+      - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.tls.certresolver=le"
+      - "traefik.http.routers.traefik.service=api@internal"
+
+      - "traefik.http.middlewares.ratelimit.rate=5"
+      - "traefik.http.middlewares.ratelimit.burst=20"
+      - "traefik.http.middlewares.ratelimit.period=1s"
+      - "traefik.http.routers.api.middlewares=ratelimit"
+
   app:
     <<: *services_defaults
     container_name: qa-app
@@ -31,6 +77,15 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    networks:
+      - internal
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.app.rule=Host(`app.kafka-practice.ru`)"
+      - "traefik.http.routers.app.entrypoints=websecure"
+      - "traefik.http.routers.app.tls.certresolver=le"
+      - "traefik.http.services.app.loadbalancer.server.port=8080"
 
   postgres:
     <<: *services_defaults
@@ -51,7 +106,11 @@ services:
       retries: 5
       timeout: 5s
     restart: unless-stopped
-
+    labels:
+      - "traefik.enable=true"
+      - "traefik.tcp.routers.pg.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.pg.entrypoints=pg"
+      - "traefik.tcp.services.pg.loadbalancer.server.port=5432"
   migrator:
     <<: *services_defaults
     image: arigaio/atlas:latest-community
@@ -75,12 +134,21 @@ services:
     ports:
       - "8082:8080"
     expose:
-      - "8082"
+      - "8080"
     environment:
       - SWAGGER_JSON=/docs/user_openapi.yaml
       - URLS=[{"url":"/docs/user_openapi.yaml","name":"Client API"}]
     volumes:
       - ./docs:/usr/share/nginx/html/docs
+    networks:
+      - internal
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.swagger.rule=Host(`swagger.kafka-practice.ru`)"
+      - "traefik.http.routers.swagger.entrypoints=websecure"
+      - "traefik.http.routers.swagger.tls.certresolver=le"
+      - "traefik.http.services.swagger.loadbalancer.server.port=8080"
 
   kafka0:
     <<: *services_defaults
@@ -88,13 +156,11 @@ services:
     hostname: kafka0
     container_name: kafka0
     ports:
-      # clients port
-      - 9092:9092
-      # metrics port
-      - 9997:9997
+      - "9092:9092"
+      - "9997:9997"
     expose:
-      - 9092
-      - 9997
+      - "9092"
+      - "9997"
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT"
@@ -123,15 +189,11 @@ services:
     entrypoint: [ '/bin/sh', '-c' ]
     command: |
       "
-      # blocks until kafka is reachable
       kafka-topics --bootstrap-server kafka0:29092 --list
-
       echo -e 'Creating kafka topics'
       kafka-topics --bootstrap-server kafka0:29092 --create --if-not-exists --topic hr.personal --replication-factor 1 --partitions 1
       kafka-topics --bootstrap-server kafka0:29092 --create --if-not-exists --topic hr.positions --replication-factor 1 --partitions 1
       kafka-topics --bootstrap-server kafka0:29092 --create --if-not-exists --topic hr.history --replication-factor 1 --partitions 1
-
-      echo -e 'Successfully created the following topics:'
       kafka-topics --bootstrap-server kafka0:29092 --list
       "
 
@@ -152,46 +214,48 @@ services:
                   secret:
                     generator:
                       secret: "CHANGE_ME_TO_A_LONG_RANDOM_SECRET_32+CHARS"
-        
         akhq:
           connections:
             docker-kafka-server:
               properties:
                 bootstrap.servers: "kafka0:29092"
-        
           security:
             default-group: limited-reader
-        
             basic-auth:
               - username: student
                 password: "8b1f4ab806281896b34b0528264f90ed0bcfb2610d55974a1e87d355cf962ab0"
                 groups:
-                  - limited-reader     
-                  - hr-producer  
+                  - limited-reader
+                  - hr-producer
               - username: admin
                 password: "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918"
                 groups:
-                  - limited-reader     
-                  - hr-producer  
-        
+                  - limited-reader
+                  - hr-producer
             roles:
               produce-only:
                 - resources: [ "TOPIC_DATA" ]
-                  actions:   [ "CREATE" ] 
-
+                  actions: [ "CREATE" ]
             groups:
               limited-reader:
                 - role: reader
-                  # regex: всё, кроме ровно "__consumer_offsets"
                   patterns: [ "^(?!__consumer_offsets$).*" ]
                   clusters: [ "docker-kafka-server" ]
-        
               hr-producer:
                 - role: produce-only
                   patterns: [ "hr.*" ]
                   clusters: [ "docker-kafka-server" ]
     depends_on:
       - kafka0
+    networks:
+      - internal
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.akhq.rule=Host(`akhq.kafka-practice.ru`)"
+      - "traefik.http.routers.akhq.entrypoints=websecure"
+      - "traefik.http.routers.akhq.tls.certresolver=le"
+      - "traefik.http.services.akhq.loadbalancer.server.port=8080"
     restart: unless-stopped
 
 networks:
@@ -200,7 +264,10 @@ networks:
   internal:
     name: qa-${REFNAME:-local}
     driver: bridge
+  proxy:
+    name: proxy
 
 volumes:
   postgres-dev:
   kafka-data:
+  letsencrypt:

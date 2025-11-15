@@ -24,7 +24,7 @@ func NewPositionsRunner(
 		profiles:    profiles,
 		history:     nil,
 		log:         log.With().Str("consumer", "positions").Logger(),
-		commitOnDLQ: false,
+		commitOnDLQ: true,
 	}
 
 	return newRunner(bootstrap, groupID, topic, h, log)
