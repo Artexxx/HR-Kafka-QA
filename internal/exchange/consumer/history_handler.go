@@ -66,6 +66,10 @@ func (h *handler) processHistory(sess sarama.ConsumerGroupSession, msg *sarama.C
 		return true
 	}
 
+	if history.Stack == nil {
+		history.Stack = []string{}
+	}
+
 	if verr := validateHistory(history); verr != "" {
 		h.toDLQ(ctx, msg, verr)
 		return h.commitOnDLQ

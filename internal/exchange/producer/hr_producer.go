@@ -70,10 +70,10 @@ func (p *HRProducer) ProducePersonal(ctx context.Context, messageID uuid.UUID, p
 func (p *HRProducer) ProducePosition(ctx context.Context, messageID uuid.UUID, profile dto.EmployeeProfile) error {
 	var payload = PositionPayload{
 		EmployeeID:    profile.EmployeeID,
-		Title:         *profile.Title,
-		Department:    *profile.Department,
-		Grade:         *profile.Grade,
-		EffectiveFrom: *profile.EffectiveFrom,
+		Title:         strPtrOrEmpty(profile.Title),
+		Department:    strPtrOrEmpty(profile.Department),
+		Grade:         strPtrOrEmpty(profile.Grade),
+		EffectiveFrom: strPtrOrEmpty(profile.EffectiveFrom),
 	}
 
 	body, err := json.Marshal(payload)
@@ -146,4 +146,11 @@ func (p *HRProducer) send(_ context.Context, topic, key string, value []byte, he
 		Int("bytes", len(value)).
 		Msg("kafka message sent")
 	return nil
+}
+
+func strPtrOrEmpty(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
 }

@@ -80,6 +80,10 @@ func (s *Service) createHistory(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
+	if req.Stack == nil {
+		req.Stack = []string{}
+	}
+
 	row := dto.EmploymentHistory{
 		EmployeeID: req.EmployeeID,
 		Company:    req.Company,
@@ -138,6 +142,10 @@ func (s *Service) updateHistory(ctx *fasthttp.RequestCtx) {
 	idStr := ctx.UserValue("id").(string)
 	if idStr == "" {
 		writeError(ctx, fasthttp.StatusBadRequest, ErrHistoryIDRequired)
+	}
+
+	if req.Stack == nil {
+		req.Stack = []string{}
 	}
 
 	row := dto.EmploymentHistory{

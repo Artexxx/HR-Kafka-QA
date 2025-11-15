@@ -169,6 +169,10 @@ func (s *Service) producerHistory(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
+	if req.Stack == nil {
+		req.Stack = []string{}
+	}
+
 	history := dto.EmploymentHistory{
 		EmployeeID: req.EmployeeID,
 		Company:    req.Company,

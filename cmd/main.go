@@ -17,7 +17,6 @@ import (
 	"github.com/Artexxx/HR-Kafka-QA/internal/repository/profile"
 	"github.com/Artexxx/HR-Kafka-QA/library/pg"
 	"github.com/Artexxx/HR-Kafka-QA/library/yamlreader"
-
 	"github.com/IBM/sarama"
 	"github.com/joho/godotenv"
 	"github.com/rs/zerolog"
