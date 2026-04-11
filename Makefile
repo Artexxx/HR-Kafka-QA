@@ -44,7 +44,7 @@ swag: swagger-gen
 	fi
 	@echo "Adding additional servers to client OpenAPI..."
 	@sed -i '/^servers:/a \
-  - url: $(SERVER_IP)\n\
+  - url: $(SERVER_URL)\n\
     description: Swagger UI' $(GEN_DIR)/user_openapi.yaml
 
 

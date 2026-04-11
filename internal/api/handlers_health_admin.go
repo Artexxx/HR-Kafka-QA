@@ -32,12 +32,13 @@ func (s *Service) resetHandler(ctx *fasthttp.RequestCtx) {
 		writeError(ctx, fasthttp.StatusBadRequest, fmt.Errorf("json.Unmarshal: %w", err))
 		return
 	}
+
 	if strings.TrimSpace(req.Password) == "" {
 		writeError(ctx, fasthttp.StatusBadRequest, errors.New("required field 'admin_password'"))
 		return
 	}
 
-	if req.Password != "admin89213password" {
+	if req.Password != s.config.AdminResetPassword.Value {
 		writeError(ctx, fasthttp.StatusUnauthorized, errors.New("invalid admin password"))
 		return
 	}

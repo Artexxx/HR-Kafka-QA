@@ -1,6 +1,6 @@
 module github.com/Artexxx/HR-Kafka-QA
 
-go 1.24.0
+go 1.26.2
 
 require (
 	github.com/IBM/sarama v1.46.2

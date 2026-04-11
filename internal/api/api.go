@@ -5,12 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/rs/zerolog/log"
-
+	"github.com/Artexxx/HR-Kafka-QA/internal/config"
 	"github.com/Artexxx/HR-Kafka-QA/internal/dto"
-
 	"github.com/fasthttp/router"
 	"github.com/google/uuid"
+	"github.com/rs/zerolog/log"
 	"github.com/valyala/fasthttp"
 )
 
@@ -18,7 +17,7 @@ import (
 // @version         1.0
 // @description     Учебный стенд для QA по Kafka: отправка событий продюсером, обработка 3 консьюмерами, запись в Postgres, проверка сценариев (порядок, дубликаты, DLQ, лаги).
 //
-//@license.name  MIT
+// @license.name  MIT
 // @license.url   https://opensource.org/license/mit
 //
 // @BasePath  /
@@ -41,7 +40,6 @@ type ProfileRepository interface {
 	Delete(ctx context.Context, employeeID string) error
 	GetProfile(ctx context.Context, employeeID string) (*dto.EmployeeProfile, error)
 	ListProfiles(ctx context.Context) ([]dto.EmployeeProfile, error)
-
 	UpsertPersonal(ctx context.Context, profile dto.EmployeeProfile) error
 	UpsertPosition(ctx context.Context, profile dto.EmployeeProfile) error
 }
@@ -61,20 +59,17 @@ type Producer interface {
 }
 
 type ServiceDeps struct {
-	Port int
-
+	Config      config.ApiConfig
 	EventsRepo  EventsRepository
 	ProfileRepo ProfileRepository
 	HistoryRepo HistoryRepository
-
-	Producer Producer
+	Producer    Producer
 }
 
 type Service struct {
-	r      *router.Router
-	server *fasthttp.Server
-	port   int
-
+	r        *router.Router
+	server   *fasthttp.Server
+	config   config.ApiConfig
 	events   EventsRepository
 	profiles ProfileRepository
 	history  HistoryRepository
@@ -86,7 +81,7 @@ func NewService(d ServiceDeps) *Service {
 
 	s := &Service{
 		r:        rt,
-		port:     d.Port,
+		config:   d.Config,
 		events:   d.EventsRepo,
 		profiles: d.ProfileRepo,
 		history:  d.HistoryRepo,
@@ -105,7 +100,6 @@ func NewService(d ServiceDeps) *Service {
 
 	return s
 }
-
 func (s *Service) Start(ctx context.Context) error {
 	mainHandler := RecoveryMiddleware(LoggingMiddleware(CORS(s.r.Handler)))
 
@@ -114,11 +108,11 @@ func (s *Service) Start(ctx context.Context) error {
 		Name:    "QA Kafka API",
 	}
 
-	log.Info().Int("port", s.port).Msg("Starting product API")
+	log.Info().Int("port", s.config.Port.Value).Msg("Starting API")
 
 	emergencyShutdown := make(chan error)
 	go func() {
-		err := server.ListenAndServe(fmt.Sprintf(":%d", s.port))
+		err := server.ListenAndServe(fmt.Sprintf(":%d", s.config.Port.Value))
 		emergencyShutdown <- err
 	}()
 

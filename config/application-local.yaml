@@ -11,4 +11,5 @@ kafka:
 
 userAPI:
   port: 8080
+  admin_reset_password: ${ADMIN_RESET_PASSWORD}
 

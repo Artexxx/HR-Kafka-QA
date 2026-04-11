@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
 	"github.com/Artexxx/HR-Kafka-QA/internal/dto"
 	"github.com/IBM/sarama"
 	"github.com/google/uuid"

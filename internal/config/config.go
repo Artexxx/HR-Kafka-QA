@@ -22,5 +22,6 @@ type KafkaConfig struct {
 }
 
 type ApiConfig struct {
-	Port *yamlenv.Env[int] `yaml:"port"`
+	Port               *yamlenv.Env[int]    `yaml:"port"`
+	AdminResetPassword *yamlenv.Env[string] `yaml:"admin_reset_password"`
 }
