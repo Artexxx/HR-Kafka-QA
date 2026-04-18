@@ -16,56 +16,13 @@ x-services-defaults: &services_defaults
   logging: *default-logging
 
 services:
-  traefik:
-    <<: *services_defaults
-    image: traefik:latest
-    container_name: traefik
-    restart: unless-stopped
-    networks:
-      - proxy
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - letsencrypt:/letsencrypt
-    command:
-      - "--entrypoints.web.address=:80"
-      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
-      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
-      - "--entrypoints.web.http.redirections.entrypoint.permanent=true"
-      - "--entrypoints.websecure.address=:443"
-      - "--entrypoints.websecure.http.tls=true"
-      - "--entrypoints.pg.address=:5432"
-
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--providers.docker.network=proxy"
-
-      - "--certificatesresolvers.le.acme.email=admin@kafka-practice.ru"
-      - "--certificatesresolvers.le.acme.storage=/letsencrypt/acme.json"
-      - "--certificatesresolvers.le.acme.httpchallenge.entrypoint=web"
-
-      - "--api.dashboard=true"
-      - "--accesslog=true"
-      - "--log.level=INFO"
-
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.traefik.rule=Host(`traefik.kafka-practice.ru`)"
-      - "traefik.http.routers.traefik.entrypoints=websecure"
-      - "traefik.http.routers.traefik.tls.certresolver=le"
-      - "traefik.http.routers.traefik.service=api@internal"
-
-      - "traefik.http.middlewares.ratelimit.rate=5"
-      - "traefik.http.middlewares.ratelimit.burst=20"
-      - "traefik.http.middlewares.ratelimit.period=1s"
-      - "traefik.http.routers.api.middlewares=ratelimit"
-
   app:
     <<: *services_defaults
     container_name: qa-app
-    build: docker/.
+    image: artexxx/hr-kafka-qa-be:latest
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
     command: make run
     volumes:
       - ./:/app
@@ -77,16 +34,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    networks:
-      - internal
-      - proxy
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.app.rule=Host(`app.kafka-practice.ru`)"
-      - "traefik.http.routers.app.entrypoints=websecure"
-      - "traefik.http.routers.app.tls.certresolver=le"
-      - "traefik.http.services.app.loadbalancer.server.port=8080"
-
   postgres:
     <<: *services_defaults
     image: postgres:13.3
@@ -106,11 +53,7 @@ services:
       retries: 5
       timeout: 5s
     restart: unless-stopped
-    labels:
-      - "traefik.enable=true"
-      - "traefik.tcp.routers.pg.rule=HostSNI(`*`)"
-      - "traefik.tcp.routers.pg.entrypoints=pg"
-      - "traefik.tcp.services.pg.loadbalancer.server.port=5432"
+
   migrator:
     <<: *services_defaults
     image: arigaio/atlas:latest-community
@@ -140,15 +83,6 @@ services:
       - URLS=[{"url":"/docs/user_openapi.yaml","name":"Client API"}]
     volumes:
       - ./docs:/usr/share/nginx/html/docs
-    networks:
-      - internal
-      - proxy
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.swagger.rule=Host(`swagger.kafka-practice.ru`)"
-      - "traefik.http.routers.swagger.entrypoints=websecure"
-      - "traefik.http.routers.swagger.tls.certresolver=le"
-      - "traefik.http.services.swagger.loadbalancer.server.port=8080"
 
   kafka0:
     <<: *services_defaults
@@ -185,8 +119,8 @@ services:
     image: confluentinc/cp-kafka:6.1.1
     depends_on:
       - kafka0
-    restart: 'no'
-    entrypoint: [ '/bin/sh', '-c' ]
+    restart: "no"
+    entrypoint: ["/bin/sh", "-c"]
     command: |
       "
       kafka-topics --bootstrap-server kafka0:29092 --list
@@ -227,8 +161,9 @@ services:
                 groups:
                   - limited-reader
                   - hr-producer
-              - username: admin
-                password: "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918"
+              - username: admin 
+                password: "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918" 
+                # *dk@=Vjs+1
                 groups:
                   - limited-reader
                   - hr-producer
@@ -247,27 +182,13 @@ services:
                   clusters: [ "docker-kafka-server" ]
     depends_on:
       - kafka0
-    networks:
-      - internal
-      - proxy
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.akhq.rule=Host(`akhq.kafka-practice.ru`)"
-      - "traefik.http.routers.akhq.entrypoints=websecure"
-      - "traefik.http.routers.akhq.tls.certresolver=le"
-      - "traefik.http.services.akhq.loadbalancer.server.port=8080"
     restart: unless-stopped
 
 networks:
-  nginx_default:
-    external: true
   internal:
-    name: qa-${REFNAME:-local}
+    name: qa-local
     driver: bridge
-  proxy:
-    name: proxy
 
 volumes:
   postgres-dev:
   kafka-data:
-  letsencrypt:
